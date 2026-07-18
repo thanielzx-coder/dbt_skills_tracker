@@ -27,6 +27,9 @@ app_mode = st.sidebar.radio(
     ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"],
     key="sidebar_navigation_menu"
 )
+
+st.sidebar.write("---")
+
 st.sidebar.title("👤 User Profile")
 raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your name so when logs are downloaded they include your name.")
 clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
@@ -35,7 +38,6 @@ if not clean_username:
 
 LOG_FILE = f"dbt_logs_{clean_username}.csv"
 
-st.sidebar.write("---")
 st.sidebar.title("💾 Data Backup Manager")
 
 # 1. EXPORT: Download current browser data to phone storage
