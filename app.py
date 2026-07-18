@@ -27,12 +27,8 @@ if not clean_username:
 
 LOG_FILE = f"dbt_logs_{clean_username}.csv"
 
-# ... (Data Backup Manager code remains here) ...
-
 st.sidebar.write("---")
 st.sidebar.title("🧭 Navigation")
-
-# UPDATED: Added a unique key argument to prevent ID duplication crashes
 app_mode = st.sidebar.radio(
     "Go to:",
     ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"],
@@ -80,18 +76,6 @@ if uploaded_backup is not None:
 # ------------------------------------------
 # END OF DATA BACKUP MANAGER
 # ------------------------------------------
-
-st.sidebar.write("---")
-st.sidebar.title("🧭 Navigation")
-app_mode = st.sidebar.radio("Go to:", ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"])
-# ... Rest of your application script code follows normally ...
-
-st.sidebar.write("---")
-st.sidebar.title("🧭 Navigation")
-app_mode = st.sidebar.radio("Go to:", ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"])
-
-st.sidebar.write("---")
-st.sidebar.subheader("📅 Target Scope Settings")
 
 today_date = datetime.now().date()
 current_monday = today_date - timedelta(days=today_date.weekday())
