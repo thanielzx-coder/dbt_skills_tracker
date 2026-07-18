@@ -7,11 +7,40 @@ from streamlit_calendar import calendar
 
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
+# --- Virtual Storage Path Bootstrapping ---
+# Stlite handles virtual sandboxed file writing natively inside the browser cache space.
 LOG_FILE = "dbt_app_logs.csv"
+
+# Ensure the log framework file exists in the browser container's virtual environment
+if not os.path.exists(LOG_FILE):
+    pd.DataFrame(columns=[
+        "Timestamp", "Event Type", "Rating Before", "Rating After",
+        "Skill Practiced", "Notes/Practice Text"
+    ]).to_csv(LOG_FILE, index=False)
 
 # ==========================================
 # SIDEBAR NAVIGATION & WEEK SELECTION
 # ==========================================
+st.sidebar.title("💾 Local Storage Manager")
+
+# 1. Upload from phone folder
+uploaded_file = st.sidebar.file_uploader("Upload your personal dbt_logs.csv", type="csv")
+if uploaded_file is not None:
+    st.session_state.user_dataframe = pd.read_csv(uploaded_file)
+
+st.sidebar.write("---")
+
+# 2. Download back to phone folder
+if not st.session_state.user_dataframe.empty:
+    csv_buffer = st.session_state.user_dataframe.to_csv(index=False).encode('utf-8')
+    st.sidebar.download_button(
+        label="📥 Save/Download Logs to Phone",
+        data=csv_buffer,
+        file_name="dbt_companion_logs.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+
 st.sidebar.title("🧭 Navigation")
 app_mode = st.sidebar.radio("Go to:", ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"])
 
@@ -44,6 +73,10 @@ DIARY_FILE = f"dbt_weekly_diary_{active_week_meta['suffix']}.csv"
 
 
 # --- Helper function to log standard skills ---
+# Initialize a session-specific dataframe if no file is uploaded yet
+if "user_dataframe" not in st.session_state:
+    st.session_state.user_dataframe = pd.DataFrame(columns=["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced", "Notes/Practice Text"])
+
 def log_event(event_type, rating_before=None, rating_after=None, skill_used=None, notes=None):
     new_entry = {
         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -54,12 +87,7 @@ def log_event(event_type, rating_before=None, rating_after=None, skill_used=None
         "Notes/Practice Text": notes if notes else ""
     }
     new_df = pd.DataFrame([new_entry])
-    if os.path.exists(LOG_FILE):
-        existing_df = pd.read_csv(LOG_FILE)
-        updated_df = pd.concat([existing_df, new_df], ignore_index=True)
-        updated_df.to_csv(LOG_FILE, index=False)
-    else:
-        new_df.to_csv(LOG_FILE, index=False)
+    st.session_state.user_dataframe = pd.concat([st.session_state.user_dataframe, new_df], ignore_index=True)
 
 
 # --- Helper to Map Logged Skills to Diary Card Categories ---
@@ -72,6 +100,10 @@ def map_logged_skill_to_diary(logged_skill):
     if any(x in logged_skill_lower for x in
            ["what & how", "observe", "describe", "participate", "one-mindfulness", "effectiveness", "non-judgement"]):
         return "Observe/Describe/Participate"
+    if "positive experiences" in logged_skill_lower:
+        return "Positive Experiences"
+    if "building mastery" in logged_skill_lower:
+        return "Building Mastery"
     if "stop" in logged_skill_lower:
         return "STOP Skill"
     if "tipp" in logged_skill_lower:
@@ -80,8 +112,12 @@ def map_logged_skill_to_diary(logged_skill):
         return "Pros & Cons"
     if "soothe" in logged_skill_lower:
         return "Self-Soothe"
-    if "mindfulness of emotion" in logged_skill_lower:
-        return "Mindfulness of Emotion"
+    if "describing the emotion" in logged_skill_lower:
+        return "Describing Emotion"
+    if "radical acceptance" in logged_skill_lower:
+        return "Radical Acceptance"
+    if "validation" in logged_skill_lower:
+        return "Validation"
     if "check the facts" in logged_skill_lower:
         return "Check the Facts"
     if "opposite action" in logged_skill_lower:
@@ -169,7 +205,7 @@ if app_mode == "🎯 Practice Skills":
 
     if st.session_state.page == "Home":
         st.subheader("🌡 How are you feeling right now?")
-        rating = st.slider("Select your distress/emotional state (1 = Crisis, 5 = Great/Calm)", 1, 5,
+        rating = st.slider("Select your distress/emotional state (1 = Crisis, 5 = Content/Calm)", 1, 5,
                            st.session_state.current_rating)
         st.session_state.current_rating = rating
 
@@ -435,10 +471,11 @@ if app_mode == "🎯 Practice Skills":
             st.subheader("Let's Re-Rate")
             new_rating = st.slider(
                 "After practicing STOP, TIPP, and Pros & Cons, how is your distress level now? (1 = Crisis, 5 = Calm)",
-                1,
-                5, 3)
+                1, 5, st.session_state.current_rating  # Initialized from last known rating
+            )
             if st.button("Finish & Log Re-rate", use_container_width=True):
                 log_event("Re-rate Flow 1 Completed", rating_before=1, rating_after=new_rating)
+                st.session_state.current_rating = new_rating  # <-- ADD THIS LINE
                 go_home()
                 st.rerun()
 
@@ -448,12 +485,12 @@ if app_mode == "🎯 Practice Skills":
         if st.session_state.flow_step == 1:
             st.subheader("Step 1: Describing the Emotion")
             st.write("To manage an emotion, we must first put a name and physical facts to it.")
-            what_happened = st.text_input("Describe the events leading up to this moment - what happened and when?")
+            what_happened = st.text_area("Describe the events leading up to this moment - what happened and when?")
             emotion_name = st.text_input("Name the primary emotion (e.g., Anger, Sadness, Shame):")
             sec_emotion_name = st.text_input("Name any secondary emotions below")
             body_sensation = st.text_input("Where do you feel this in your body physically?")
-            craved_action = st.text_input("What did you want to do as a result of how you felt?")
-            actual_action = st.text_input("What did you do and say (actions and behaviours engaged in)")
+            craved_action = st.text_area("What did you want to do as a result of how you felt?")
+            actual_action = st.text_area("What did you do and say (actions and behaviours engaged in)")
 
             if st.button("Record & Proceed to Radical Acceptance", use_container_width=True):
                 combined_notes = (f"What Happened: {what_happened} | Primary: {emotion_name} | "
@@ -479,17 +516,17 @@ if app_mode == "🎯 Practice Skills":
             st.write("Recommended next steps to address active problem loops:")
             col_lnk1, col_lnk2 = st.columns(2)
             with col_lnk1:
-                if st.button("📊 Open Pros & Cons Manual Page", use_container_width=True, key="flow_lnk_pc"):
+                if st.button("⚖️ Open Pros & Cons Manual Page", use_container_width=True, key="flow_lnk_pc"):
                     st.session_state.page = "Skill_Detail"
                     st.session_state.selected_skill = "Pros & Cons"
                     st.rerun()
             with col_lnk2:
-                if st.button("🚀 Open Positive Experiences Page", use_container_width=True, key="flow_lnk_pe"):
+                if st.button("☺️ Open Positive Experiences Page", use_container_width=True, key="flow_lnk_pe"):
                     st.session_state.page = "Skill_Detail"
                     st.session_state.selected_skill = "Positive Experiences"
                     st.rerun()
 
-            if st.button("Record & Re-Rate", use_container_width=True):
+            if st.button("💾Record & Re-Rate", use_container_width=True):
                 combined_ra = f"Fighting Reality: {fighting_reality} | Willingness: {willingness_notes} | Acceptance: {acceptance}"
                 log_event("Flow - Radical Acceptance", rating_before=2, notes=combined_ra)
                 st.session_state.flow_step = 3
@@ -499,10 +536,11 @@ if app_mode == "🎯 Practice Skills":
             st.subheader("Let's Re-Rate")
             new_rating = st.slider(
                 "After naming the emotion and practicing acceptance, how is your distress level? (1 = Crisis, 5 = Calm)",
-                1,
-                5, 3)
+                1, 5, st.session_state.current_rating
+            )
             if st.button("Finish & Log Re-rate", use_container_width=True):
                 log_event("Re-rate Flow 2 Completed", rating_before=2, rating_after=new_rating)
+                st.session_state.current_rating = new_rating  # <-- ADD THIS LINE
                 go_home()
                 st.rerun()
 
@@ -553,9 +591,11 @@ if app_mode == "🎯 Practice Skills":
             st.subheader("Let's Re-Rate")
             new_rating = st.slider(
                 "After examining facts and choosing a course of action, what is your distress level? (1 = Crisis, 5 = Calm)",
-                1, 5, 3)
+                1, 5, st.session_state.current_rating
+            )
             if st.button("Finish & Log Re-rate", use_container_width=True):
                 log_event("Re-rate Flow 3 Completed", rating_before=3, rating_after=new_rating)
+                st.session_state.current_rating = new_rating  # <-- ADD THIS LINE
                 go_home()
                 st.rerun()
 
@@ -795,6 +835,7 @@ if app_mode == "🎯 Practice Skills":
                                   skill_used=f"{st.session_state.rand_mind_skill}: {st.session_state.rand_mind_sub}",
                                   notes=full_notes)
                         st.success("Practice successfully recorded!")
+                        st.session_state.current_rating = detail_rating_after
                         go_home()
                         st.rerun()
                 with col_home:
@@ -1041,7 +1082,7 @@ elif app_mode == "📖 Read & View Logs":
     st.write("---")
 
     if os.path.exists(LOG_FILE):
-        df = pd.read_csv(LOG_FILE)
+        df = st.session_state.user_dataframe
         if not df.empty:
             df = df.fillna("")
             df["parsed_date"] = pd.to_datetime(df["Timestamp"], errors='coerce').dt.date
@@ -1109,7 +1150,6 @@ elif app_mode == "📖 Read & View Logs":
                 else:
                     st.info("No practice entries found logged within this specific week selection range.")
 
-            # FORMAT B: FULL RE-ENGINEERED CALENDAR UI GRID
             else:
                 calendar_events = []
                 # Map distinct events and populate data payload list for rendering
@@ -1117,12 +1157,13 @@ elif app_mode == "📖 Read & View Logs":
                     event_date_str = str(row["parsed_date"])  # "YYYY-MM-DD"
                     skill_title = row["Skill Practiced"] if row["Skill Practiced"] else row["Event Type"]
 
-                    # Distribute subtle aesthetic identifier markers based on tracking context
-                    bg_color = "#3498db"  # Default Blue
+                    # Map variations of blue to fit tracking contexts natively
+                    bg_color = "#2563EB"  # Bright Royal Blue (Default)
+
                     if "flow" in str(row["Event Type"]).lower() or row["Rating Before"] == 1:
-                        bg_color = "#e74c3c"  # Distress Red
+                        bg_color = "#1E3A8A"  # Dark Midnight Blue for alert/crisis loops
                     elif "mindfulness" in str(skill_title).lower():
-                        bg_color = "#2ecc71"  # Mindful Green
+                        bg_color = "#60A5FA"  # Soft Sky Blue accent for mindfulness entries
 
                     calendar_events.append({
                         "id": str(index),
@@ -1184,6 +1225,9 @@ elif app_mode == "📖 Read & View Logs":
                         master_df.to_csv(LOG_FILE, index=False)
                         st.success("Entry successfully removed from calendar database!")
                         st.rerun()
+                # =========================================================================
+                # END OF FORMAT B
+                # =========================================================================
 
             st.write("---")
             with st.expander("💾 View Master Raw Data (All Weeks Combined)", expanded=False):
@@ -1191,6 +1235,7 @@ elif app_mode == "📖 Read & View Logs":
                 if st.button("Clear All History Database File"):
                     os.remove(LOG_FILE)
                     st.rerun()
+
         else:
             st.info("Your logbook is currently empty. Start practicing to populate your logs!")
     else:
