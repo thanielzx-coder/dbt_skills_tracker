@@ -21,11 +21,11 @@
     <script>
       stlite.mount({
         requirements: ["pandas", "streamlit-calendar"],
-        entrypoint: "main.py",
+        entrypoint: "app.py",
         files: {
           // This tells the browser to pull your clean app.py file directly
-          "main.py": {
-            url: "main.py"
+          "app.py": {
+            url: "app.py"
           },
           ".streamlit/config.toml": `
 [theme]
