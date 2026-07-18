@@ -27,8 +27,20 @@ if not clean_username:
 
 LOG_FILE = f"dbt_logs_{clean_username}.csv"
 
+# ... (Data Backup Manager code remains here) ...
+
 st.sidebar.write("---")
-st.sidebar.subheader("💾 Data Backup Manager")
+st.sidebar.title("🧭 Navigation")
+
+# UPDATED: Added a unique key argument to prevent ID duplication crashes
+app_mode = st.sidebar.radio(
+    "Go to:",
+    ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"],
+    key="sidebar_navigation_menu"
+)
+
+st.sidebar.write("---")
+st.sidebar.subheader("📅 Target Scope Settings")
 
 # 1. EXPORT: Download current browser data to phone storage
 if os.path.exists(LOG_FILE):
