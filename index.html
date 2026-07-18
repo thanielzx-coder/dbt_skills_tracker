@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>DBT Companion</title>
+    <!-- Mount the Stlite Client Engine Canvas Style Sheet -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.73.0/build/stlite.css" />
+    <style>
+      /* Force the application window container to occupy the full screen visually */
+      html, body, #root {
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+        background-color: #FFFFFF;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <!-- Load the Pyodide-powered Stlite framework launcher script -->
+    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.73.0/build/stlite.js"></script>
+    <script>
+      stlite.mount({
+        requirements: ["pandas", "streamlit-calendar"],
+        entrypoint: "app.py",
+        files: {
+          "app.py": `
+import streamlit as st
+import pandas as pd
+from datetime import datetime, timedelta
+import os
+import random
+from streamlit_calendar import calendar
+
+# Paste your complete updated Python code here
+st.title("🧘 DBT Companion")
+st.write("Hello! If you see this, the app is running completely on your device!")
+
+`,
+          ".streamlit/config.toml": `
+[theme]
+primaryColor = "#2563EB"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F4F6"
+textColor = "#1F2937"
+`
+        }
+      }, document.getElementById("root"));
+    </script>
+  </body>
+</html>
