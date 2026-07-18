@@ -28,6 +28,53 @@ if not clean_username:
 LOG_FILE = f"dbt_logs_{clean_username}.csv"
 
 st.sidebar.write("---")
+st.sidebar.subheader("💾 Data Backup Manager")
+
+# 1. EXPORT: Download current browser data to phone storage
+if os.path.exists(LOG_FILE):
+    current_df = pd.read_csv(LOG_FILE)
+    if not current_df.empty:
+        csv_buffer = current_df.to_csv(index=False).encode('utf-8')
+        st.sidebar.download_button(
+            label="📥 Export Logs to Phone File",
+            data=csv_buffer,
+            file_name=f"dbt_backup_{clean_username}.csv",
+            mime="text/csv",
+            use_container_width=True,
+            help="Saves your current private log file to your device's Files app so you don't lose it."
+        )
+
+uploaded_backup = st.sidebar.file_uploader(
+    "Import a backup file:",
+    type="csv",
+    help="Upload a previously exported CSV file to restore your logs on this device."
+)
+
+if uploaded_backup is not None:
+    try:
+        imported_df = pd.read_csv(uploaded_backup)
+        # Quick validation check to make sure the backup format matches your schema
+        required_columns = ["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced", "Notes/Practice Text"]
+        if all(col in imported_df.columns for col in required_columns):
+            imported_df.to_csv(LOG_FILE, index=False)
+            st.sidebar.success("🎉 Backup data imported successfully into this device's browser!")
+            # Trigger a rerun to parse the newly populated file structures instantly
+            st.rerun()
+        else:
+            st.sidebar.error("❌ Invalid backup file format. Column mismatch detected.")
+    except Exception as e:
+        st.sidebar.error(f"❌ Failed to parse backup file: {str(e)}")
+
+# ------------------------------------------
+# END OF DATA BACKUP MANAGER
+# ------------------------------------------
+
+st.sidebar.write("---")
+st.sidebar.title("🧭 Navigation")
+app_mode = st.sidebar.radio("Go to:", ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"])
+# ... Rest of your application script code follows normally ...
+
+st.sidebar.write("---")
 st.sidebar.title("🧭 Navigation")
 app_mode = st.sidebar.radio("Go to:", ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"])
 
@@ -850,6 +897,9 @@ if app_mode == "🎯 Practice Skills":
 # ==========================================
 # VIEW 2: LOG READER
 # ==========================================
+# ==========================================
+# VIEW 2: LOG READER
+# ==========================================
 elif app_mode == "📖 Read & View Logs":
     st.title("📖 Your DBT Practice Logbook")
     st.write(f"Viewing active calendar records filtered from: **{active_week_meta['start'].strftime('%d %b %Y')}** to **{active_week_meta['end'].strftime('%d %b %Y')}**")
@@ -857,7 +907,7 @@ elif app_mode == "📖 Read & View Logs":
     st.write("---")
 
     if os.path.exists(LOG_FILE):
-        df = pd.read_csv(LOG_FILE)
+        df = pd.read_csv(LOG_FILE) # Reads from the browser's local sandbox file
         if not df.empty:
             df = df.fillna("")
             df["parsed_date"] = pd.to_datetime(df["Timestamp"], errors='coerce').dt.date
