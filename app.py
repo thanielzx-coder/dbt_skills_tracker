@@ -17,7 +17,7 @@ if not os.path.exists(LOG_FILE):
     ]).to_csv(LOG_FILE, index=False)
 
 # ==========================================
-# SIDEBAR NAVIGATION & WEEK SELECTION
+# SIDEBAR NAVIGATION & DATA MANAGEMENT
 # ==========================================
 st.sidebar.title("👤 User Profile")
 raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your custom identifier name to isolate your logs.")
@@ -36,7 +36,7 @@ app_mode = st.sidebar.radio(
 )
 
 st.sidebar.write("---")
-st.sidebar.subheader("📅 Target Scope Settings")
+st.sidebar.title("💾 Data Backup Manager")
 
 # 1. EXPORT: Download current browser data to phone storage
 if os.path.exists(LOG_FILE):
@@ -52,6 +52,7 @@ if os.path.exists(LOG_FILE):
             help="Saves your current private log file to your device's Files app so you don't lose it."
         )
 
+# 2. IMPORT: Upload an existing backup file to restore data
 uploaded_backup = st.sidebar.file_uploader(
     "Import a backup file:",
     type="csv",
@@ -61,12 +62,10 @@ uploaded_backup = st.sidebar.file_uploader(
 if uploaded_backup is not None:
     try:
         imported_df = pd.read_csv(uploaded_backup)
-        # Quick validation check to make sure the backup format matches your schema
         required_columns = ["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced", "Notes/Practice Text"]
         if all(col in imported_df.columns for col in required_columns):
             imported_df.to_csv(LOG_FILE, index=False)
             st.sidebar.success("🎉 Backup data imported successfully into this device's browser!")
-            # Trigger a rerun to parse the newly populated file structures instantly
             st.rerun()
         else:
             st.sidebar.error("❌ Invalid backup file format. Column mismatch detected.")
@@ -74,8 +73,10 @@ if uploaded_backup is not None:
         st.sidebar.error(f"❌ Failed to parse backup file: {str(e)}")
 
 # ------------------------------------------
-# END OF DATA BACKUP MANAGER
+# WEEK SCOPE CONFIGURATIONS
 # ------------------------------------------
+st.sidebar.write("---")
+st.sidebar.subheader("📅 Target Scope Settings")
 
 today_date = datetime.now().date()
 current_monday = today_date - timedelta(days=today_date.weekday())
@@ -826,7 +827,7 @@ if app_mode == "🎯 Practice Skills":
                 with col_lnk1:
                     if st.button("📊 Open Pros & Cons Manual Page", use_container_width=True, key="manual_lnk_pc"):
                         st.session_state.page = "Skill_Detail"
-                        st.session_state.selected_skill = "Pros & Cons"
+                        st.session_skill = "Pros & Cons"
                         st.rerun()
                 with col_lnk2:
                     if st.button("🚀 Open Positive Experiences (Cope Ahead)", use_container_width=True, key="manual_lnk_pe"):
@@ -842,7 +843,7 @@ if app_mode == "🎯 Practice Skills":
                 full_notes = st.text_area("What is your action urge and is it effective? Write the opposite action you will take (actions & words).")
             elif skill == "Problem-solving":
                 st.write("When emotions are appropriate, break the issue down into actionable, concrete tasks.")
-                full_notes = st.text_area("What is the problem (check the facts here)?\nWhat is the short-term goal?\nList top 3 solutions\nPros & Cons to choose\nBreakdown into steps")
+                full_notes = st.text_area("What is the problem (check the facts here)?\nWhat is the short-term goal?\\nList top 3 solutions\nPros & Cons to choose\nBreakdown into steps")
             elif skill == "DEARMAN":
                 st.markdown("""
                 **D** - **Describe** the situation with facts ONLY.  
@@ -893,9 +894,6 @@ if app_mode == "🎯 Practice Skills":
 # ==========================================
 # VIEW 2: LOG READER
 # ==========================================
-# ==========================================
-# VIEW 2: LOG READER
-# ==========================================
 elif app_mode == "📖 Read & View Logs":
     st.title("📖 Your DBT Practice Logbook")
     st.write(f"Viewing active calendar records filtered from: **{active_week_meta['start'].strftime('%d %b %Y')}** to **{active_week_meta['end'].strftime('%d %b %Y')}**")
@@ -903,7 +901,7 @@ elif app_mode == "📖 Read & View Logs":
     st.write("---")
 
     if os.path.exists(LOG_FILE):
-        df = pd.read_csv(LOG_FILE) # Reads from the browser's local sandbox file
+        df = pd.read_csv(LOG_FILE)
         if not df.empty:
             df = df.fillna("")
             df["parsed_date"] = pd.to_datetime(df["Timestamp"], errors='coerce').dt.date
