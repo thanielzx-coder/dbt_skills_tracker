@@ -19,14 +19,7 @@ if not os.path.exists(LOG_FILE):
 # ==========================================
 # SIDEBAR NAVIGATION & DATA MANAGEMENT
 # ==========================================
-st.sidebar.title("👤 User Profile")
-raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your custom identifier name to isolate your logs.")
-clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
-if not clean_username:
-    clean_username = "default"
-
-LOG_FILE = f"dbt_logs_{clean_username}.csv"
-
+st.sidebar.info("🧘 Use this companion daily to monitor your distress, practice DBT skills, and track progress over time.")
 st.sidebar.write("---")
 st.sidebar.title("🧭 Navigation")
 app_mode = st.sidebar.radio(
@@ -34,6 +27,13 @@ app_mode = st.sidebar.radio(
     ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"],
     key="sidebar_navigation_menu"
 )
+st.sidebar.title("👤 User Profile")
+raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your name so when logs are downloaded they include your name.")
+clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
+if not clean_username:
+    clean_username = "default"
+
+LOG_FILE = f"dbt_logs_{clean_username}.csv"
 
 st.sidebar.write("---")
 st.sidebar.title("💾 Data Backup Manager")
@@ -49,7 +49,7 @@ if os.path.exists(LOG_FILE):
             file_name=f"dbt_backup_{clean_username}.csv",
             mime="text/csv",
             use_container_width=True,
-            help="Saves your current private log file to your device's Files app so you don't lose it."
+            help="Saves your current private log file to your device's files app so you don't lose it - recommended."
         )
 
 # 2. IMPORT: Upload an existing backup file to restore data
@@ -211,8 +211,6 @@ if st.sidebar.button("🔄 Reset View State"):
     go_home()
     st.rerun()
 
-st.sidebar.write("---")
-st.sidebar.info("🧘 Use this companion daily to monitor your distress, practice DBT skills, and track progress over time.")
 
 # ==========================================
 # VIEW 1: PRACTICE SKILLS
@@ -855,7 +853,8 @@ if app_mode == "🎯 Practice Skills":
             if skill == "Wise Mind":
                 st.markdown("""
                 **Definition:** A balance of the Reasonable Mind (logic) and the Emotional Mind (feelings).  
-                **Steps:** * Breathe in, focus on the word **'Wise'**.  
+                **Steps:** 
+                * Breathe in, focus on the word **'Wise'**.  
                 * Breathe out, focus on the word **'Mind'**.  
                 * Repeat this 10 times
                 * Now, ask your inner self: *What is the wise choice AKA middle path here?*
