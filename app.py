@@ -127,8 +127,10 @@ def map_logged_skill_to_diary(logged_skill):
     logged_skill_lower = str(logged_skill).lower().strip()
     if "wise mind" in logged_skill_lower:
         return "Wise Mind"
-    if any(x in logged_skill_lower for x in ["what & how", "observe", "describe", "participate", "one-mindfulness", "effectiveness", "non-judgement"]):
-        return "Observe/Describe/Participate"
+    if any(x in logged_skill_lower for x in ["what & how", "observe", "describe", "participate"]):
+        return "What Skills"
+    if any(x in logged_skill_lower for x in ["what & how", "one-mindfulness", "effectiveness", "non-judgement"]):
+        return "How Skills"
     if "positive experiences" in logged_skill_lower:
         return "Positive Experiences"
     if "building mastery" in logged_skill_lower:
@@ -266,29 +268,59 @@ if app_mode == "🎯 Practice Skills":
         elif q_step == 1.1:
             st.error("🚨 **Please access immediate support if you are unsafe.**")
             st.markdown("""
-            * **UK Crisis Support:** Call **999** in an emergency, or call **111 (Option 2)** for immediate mental health support.
-            * **Crisis text lines:** Text **SHOUT** to **85258**.
-            """)
-            if st.button("🚒 Launch Distress Tolerance Protocol (Flow 1)", use_container_width=True):
+                    * **UK Crisis Support:** Call **999** in an emergency, or call **111 (Option 2)** for immediate mental health support.
+                    * **Crisis text lines:** Text **SHOUT** to **85258**.
+                    """)
+            if st.button("🚒 Launch Distress Tolerance Protocol (STOP, TIPP and Pros & Cons)", use_container_width=True):
                 st.session_state.page = "Flow_Distress_Tolerance"
                 st.session_state.flow_step = 1
                 st.rerun()
             if st.button("🔄 Restart Quiz", use_container_width=True):
                 st.session_state.quiz_step = 1
                 st.rerun()
+
         elif q_step == 2:
-            st.write("**Question 2:** Does this situation involve negotiating or interacting with someone else?")
-            col_q2_y, col_q2_n = st.columns(2)
-            with col_q2_y:
-                if st.button("👍 Yes", key="quiz_q2_y", use_container_width=True):
+            st.write("**Question 2:** Are your emotions too intense to think rationally?")
+            col_q3_y, col_q3_n = st.columns(2)
+            with col_q3_y:
+                if st.button("👍 Yes", key="quiz_q3_y", use_container_width=True):
                     st.session_state.quiz_step = 2.1
                     st.rerun()
-            with col_q2_n:
-                if st.button("👎 No", key="quiz_q2_n", use_container_width=True):
+            with col_q3_n:
+                if st.button("👎 No", key="quiz_q3_n", use_container_width=True):
                     st.session_state.quiz_step = 3
                     st.rerun()
         elif q_step == 2.1:
-            st.info("🎯 **Recommendation:** Use interpersonal effectiveness mechanics.")
+            st.write(
+                "**Selection Strategy:** Do you need rapid physiological relief or a gentle, encouraging mental reset?")
+            col_strat_p, col_strat_m = st.columns(2)
+            with col_strat_p:
+                if st.button("🏃 Physical / Body Relief", key="quiz_p_relief", use_container_width=True):
+                    st.info("🌊 **Recommendation:** Launching active physical containment mechanisms.")
+                    st.session_state.page = "Flow_Distress_Tolerance"
+                    st.session_state.flow_step = 1
+                    st.rerun()
+            with col_strat_m:
+                if st.button("✨ Mental / Imagery Reset", key="quiz_m_reset", use_container_width=True):
+                    st.info("✨ **Recommendation:** Try the IMPROVE framework to step away mentally.")
+                    st.session_state.page = "Skill_Detail"
+                    st.session_state.selected_skill = "IMPROVE"
+                    st.rerun()
+
+        elif q_step == 3:
+            st.write("**Question 3:** Does this situation involve negotiating or interacting with someone else?")
+            col_q2_y, col_q2_n = st.columns(2)
+            with col_q2_y:
+                if st.button("👍 Yes", key="quiz_q2_y", use_container_width=True):
+                    st.session_state.quiz_step = 3.1
+                    st.rerun()
+            with col_q2_n:
+                if st.button("👎 No", key="quiz_q2_n", use_container_width=True):
+                    st.session_state.quiz_step = 4
+                    st.rerun()
+        elif q_step == 3.1:
+            st.info(
+                "🎯 **Recommendation:** Use interpersonal effectiveness skills - The Dime Game will help inform you if this is the right time to converse with someone and what approach to take.")
             if st.button("🎲 Launch The Dime Game Wizard", use_container_width=True):
                 st.session_state.page = "Dime_Game"
                 st.session_state.dime_game_step = 0
@@ -297,26 +329,7 @@ if app_mode == "🎯 Practice Skills":
             if st.button("🔄 Restart Quiz", use_container_width=True):
                 st.session_state.quiz_step = 1
                 st.rerun()
-        elif q_step == 3:
-            st.write("**Question 3:** Are your emotions too intense to think rationally?")
-            col_q3_y, col_q3_n = st.columns(2)
-            with col_q3_y:
-                if st.button("👍 Yes", key="quiz_q3_y", use_container_width=True):
-                    st.session_state.quiz_step = 3.1
-                    st.rerun()
-            with col_q3_n:
-                if st.button("👎 No", key="quiz_q3_n", use_container_width=True):
-                    st.session_state.quiz_step = 4
-                    st.rerun()
-        elif q_step == 3.1:
-            st.info("🌊 **Recommendation:** Try Emotional Regulation practices.")
-            if st.button("🌊 Launch Mindfulness of Emotion Protocol (Flow 2)", use_container_width=True):
-                st.session_state.page = "Flow_Mindfulness_of_Emotion"
-                st.session_state.flow_step = 1
-                st.rerun()
-            if st.button("🔄 Restart Quiz", use_container_width=True):
-                st.session_state.quiz_step = 1
-                st.rerun()
+
         elif q_step == 4:
             st.write("**Question 4:** Is the situation about a future scenario?")
             col_q4_y, col_q4_n = st.columns(2)
@@ -329,14 +342,15 @@ if app_mode == "🎯 Practice Skills":
                     st.session_state.quiz_step = 5
                     st.rerun()
         elif q_step == 4.1:
-            st.info("🚀 **Recommendation:** Practice Cope Ahead.")
+            st.info("🚀 **Recommendation:** Practice Cope Ahead to prepare for future obstacles.")
             if st.button("🚀 Open Cope Ahead Skill Profile", use_container_width=True):
                 st.session_state.page = "Skill_Detail"
-                st.session_state.selected_skill = "Positive Experiences"
+                st.session_state.selected_skill = "Cope Ahead"
                 st.rerun()
             if st.button("🔄 Restart Quiz", use_container_width=True):
                 st.session_state.quiz_step = 1
                 st.rerun()
+
         elif q_step == 5:
             st.write("**Question 5:** Are your thoughts spiralling about a current situation?")
             col_q5_y, col_q5_n = st.columns(2)
@@ -349,7 +363,7 @@ if app_mode == "🎯 Practice Skills":
                     st.session_state.quiz_step = 6
                     st.rerun()
         elif q_step == 5.1:
-            st.info("🔍 **Recommendation:** Investigate objective profiles.")
+            st.info("🔍 **Recommendation:** Investigate objective profiles with Check the Facts.")
             if st.button("🔍 Launch Check the Facts Protocol", use_container_width=True):
                 st.session_state.page = "Flow_Check_The_Facts"
                 st.session_state.flow_step = 1
@@ -357,16 +371,32 @@ if app_mode == "🎯 Practice Skills":
             if st.button("🔄 Restart Quiz", use_container_width=True):
                 st.session_state.quiz_step = 1
                 st.rerun()
+
         elif q_step == 6:
-            st.write("**Question 6:** Are you feeling empty or numb?")
+            st.write(
+                "**Question 6:** Are you feeling physically run down, sleep-deprived, or emotionally vulnerable due to routines?")
             col_q6_y, col_q6_n = st.columns(2)
             with col_q6_y:
                 if st.button("👍 Yes", key="quiz_q6_y", use_container_width=True):
+                    st.info("🩹 **Recommendation:** Check in with your physical base foundations via PLEASE.")
+                    st.session_state.page = "Skill_Detail"
+                    st.session_state.selected_skill = "PLEASE"
+                    st.rerun()
+            with col_q6_n:
+                if st.button("👎 No", key="quiz_q6_n", use_container_width=True):
+                    st.session_state.quiz_step = 7
+                    st.rerun()
+
+        elif q_step == 7:
+            st.write("**Question 7:** Are you feeling empty or numb?")
+            col_q7_y, col_q7_n = st.columns(2)
+            with col_q7_y:
+                if st.button("👍 Yes", key="quiz_q7_y", use_container_width=True):
                     st.session_state.page = "Skill_Detail"
                     st.session_state.selected_skill = "Self-Soothe"
                     st.rerun()
-            with col_q6_n:
-                if st.button("👎 No (Distract Skill)", key="quiz_q6_n", use_container_width=True):
+            with col_q7_n:
+                if st.button("👎 No (Distract Skill)", key="quiz_q7_n", use_container_width=True):
                     st.session_state.page = "Skill_Detail"
                     st.session_state.selected_skill = "Distract"
                     st.rerun()
@@ -376,47 +406,35 @@ if app_mode == "🎯 Practice Skills":
         col1, col2 = st.columns(2)
 
         with col1:
-            with st.expander("🧘 **Mindfulness**", expanded=False):
-                st.write("Focusing the mind, directing attention, and being present.")
-                skills = ["Wise Mind", "What & How skills", "Positive Experiences", "Building Mastery"]
-                for s in skills:
-                    if st.button(s, key=f"mind_{s}", use_container_width=True):
-                        st.session_state.page = "Skill_Detail"
-                        st.session_state.selected_skill = s
-                        st.rerun()
+            with st.expander("🧘 **Mindfulness & Foundations**", expanded=False):
+                st.write(
+                    "Focusing the mind, directing attention, and being present, as well as identifying positive experiences and keeping to positive routines to support your emotional wellbeing.")
+                if st.button("📖 Open Mindfulness Overview", use_container_width=True, key="lnk_idx_mind"):
+                    st.session_state.page = "Category_Overview"
+                    st.session_state.selected_category = "Mindfulness & Foundations"
+                    st.rerun()
 
             with st.expander("🚒 **Distress Tolerance**", expanded=False):
                 st.write("Surviving crisis situations without making them worse.")
-                skills = ["STOP", "TIPP", "Pros & Cons", "Distract", "Self-Soothe"]
-                for s in skills:
-                    if st.button(s, key=f"distress_{s}", use_container_width=True):
-                        st.session_state.page = "Skill_Detail"
-                        st.session_state.selected_skill = s
-                        st.rerun()
+                if st.button("📖 Open Distress Tolerance Overview", use_container_width=True, key="lnk_idx_distress"):
+                    st.session_state.page = "Category_Overview"
+                    st.session_state.selected_category = "Distress Tolerance"
+                    st.rerun()
 
         with col2:
             with st.expander("🌊 **Emotional Regulation**", expanded=False):
                 st.write("Understanding and managing intense emotions.")
-                skills = ["Describing the Emotion", "Radical Acceptance", "Validation", "Check the Facts", "Opposite Action", "Problem-solving"]
-                for s in skills:
-                    if st.button(s, key=f"emotion_{s}", use_container_width=True):
-                        st.session_state.page = "Skill_Detail"
-                        st.session_state.selected_skill = s
-                        st.rerun()
+                if st.button("📖 Open Emotional Regulation Overview", use_container_width=True, key="lnk_idx_emotion"):
+                    st.session_state.page = "Category_Overview"
+                    st.session_state.selected_category = "Emotional Regulation"
+                    st.rerun()
 
             with st.expander("💬 **Interpersonal Effectiveness**", expanded=False):
                 st.write("Navigating conflict and communicating assertively.")
-                skills = ["The Dime Game", "DEARMAN", "GIVE", "FAST"]
-                for s in skills:
-                    if st.button(s, key=f"inter_{s}", use_container_width=True):
-                        if s == "The Dime Game":
-                            st.session_state.page = "Dime_Game"
-                            st.session_state.dime_game_step = 0
-                            st.session_state.dime_game_answers = {}
-                        else:
-                            st.session_state.page = "Skill_Detail"
-                            st.session_state.selected_skill = s
-                        st.rerun()
+                if st.button("📖 Open Interpersonal Overview", use_container_width=True, key="lnk_idx_inter"):
+                    st.session_state.page = "Category_Overview"
+                    st.session_state.selected_category = "Interpersonal Effectiveness"
+                    st.rerun()
 
     elif st.session_state.page == "Flow_Distress_Tolerance":
         st.warning("⚠️ High distress detected. Let's practice Distress Tolerance.")
@@ -663,12 +681,120 @@ if app_mode == "🎯 Practice Skills":
             reflections = st.text_area("Write down your thoughts or next steps based on this recommendation:")
             dime_rating_after = st.slider("Select your current distress state AFTER playing (1 = Crisis, 5 = Calm)", 1, 5, st.session_state.current_rating)
             full_notes = f"Mode: {mode} | Score: {total_dimes}/10 | Rec: {rec_text} | Practice: {reflections}"
-            if st.button("💾 Log Game & Finish", use_container_width=True):
+            if st.button("💾 Log Game", use_container_width=True):
                 log_event("The Dime Game Practice", rating_before=st.session_state.dime_rating_before, rating_after=dime_rating_after, skill_used="The Dime Game", notes=full_notes)
                 st.session_state.current_rating = dime_rating_after
                 st.success("Successfully logged Dime Game practice!")
+                col_lnk1, col_lnk2, col_lnk3 = st.columns(3)
+                with col_lnk1:
+                    st.write("DEARMAN is used for getting your objectives and goals in a situation met e.g. obtaining rights, asking for something/support, refusing an unreasonable request or resolving conflict")
+                    if st.button("DEARMAN", use_container_width=True, key="manual_lnk_pc"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "DEARMAN"
+                        st.rerun()
+                with col_lnk2:
+                    st.write("FAST is for prioritising your self respect e.g. respecting your morals, and empowering yourself")
+                    if st.button("FAST", use_container_width=True,
+                                 key="manual_lnk_pe"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "FAST"
+                        st.rerun()
+                with col_lnk3:
+                    st.write("GIVE is for prioritising the relationship in a negotiation e.g. maintain the other person's love/respect and balancing immediate goals with that of the relationship")
+                    if st.button("GIVE", use_container_width=True,
+                                 key="manual_lnk_pe"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "GIVE"
+                        st.rerun()
+    elif st.session_state.page == "Category_Overview":
+        cat = st.session_state.selected_category
+
+        col_c1, col_c2 = st.columns([4, 1])
+        with col_c1:
+            st.title(f"🗂️ Category Index: {cat}")
+        with col_c2:
+            if st.button("↩️ Home", key="cat_back_home"):
                 go_home()
                 st.rerun()
+
+        st.write("---")
+
+        if cat == "Mindfulness & Foundations":
+            st.markdown("""
+                ### 🧘 Mindfulness & Foundations Overview
+                Mindfulness forms the core foundation of all DBT skills. It teaches you how to take control of your attention, live in the present moment, and drop value-judgments that fuel emotional distress.
+
+                *   **Wise Mind:** Finding the balance between your Reasonable Mind (logic) and your Emotional Mind (intense emotions).
+                *   **What & How Skills:** The fundamentals of mindfulness, noticing *What* you do (Observe, Describe, Participate) and *How* you do it (Non-judgmentally, One-mindfully, Effectively).
+                *   **Positive Experiences:** Planning and recording pleasant events both in the short- and long-term to build a life worth living.
+                *   **Building Mastery:** Doing things that challenge you with the intention of building satisfaction, a feeling of competence and control.
+                *   **Cope Ahead:** Planning and mentally rehearsing coping with high-stress events/triggers effectively.
+                *   **PLEASE:** Managing your physical vulnerabilities (Physical Health, Eating, Avoiding Negative Cycles, Sleep, Exercise) to create a stable emotional baseline.
+                """)
+            st.write("---")
+            st.subheader("Select a skill to view instructions and record a practice entry:")
+            skills = ["Wise Mind", "What & How skills", "Positive Experiences", "Building Mastery", "Cope Ahead",
+                      "PLEASE"]
+
+        elif cat == "Distress Tolerance":
+            st.markdown("""
+                ### 🚒 Distress Tolerance Overview
+                These crisis survival strategies are designed to help you get through intense emotional storms without making the situation worse or reacting impulsively.
+
+                *   **STOP:** A simple four-step pause that prevents impulsive, destructive behaviors and urges when the nervous system is triggered.
+                *   **TIPP:** Using physical body adjustments (Temperature, Intense exercise, Paced breathing, Paired relaxation) to change your body chemistry instantly.
+                *   **Pros & Cons:** Weighing up the short and long-term consequences of giving in to an urge versus resisting it.
+                *   **Distract (ACCEPTS):** Temporarily redirecting your mental focus by doing something else whilst those difficult thoughts/feelings pass.
+                *   **IMPROVE:** Shifting from a negative to positive focus in the present moment using internal imagery, meaning, relaxation, and encouragement.
+                *   **Self-Soothe:** Soothing your nervous system by targeting your physical senses, grounding you and preventing action on impulses.
+                """)
+            st.write("---")
+            st.subheader("Select a skill to view instructions and record a practice entry:")
+            skills = ["STOP", "TIPP", "Pros & Cons", "Distract", "IMPROVE", "Self-Soothe"]
+
+        elif cat == "Emotional Regulation":
+            st.markdown("""
+                ### 🌊 Emotional Regulation Overview
+                These skills aim to understand your emotions and the impact they have whilst decreasing emotional suffering and vulnerability. Emotions are powerful and necessary helping us to communicate and drive action.
+
+                *   **Describing the Emotion:** Breaking down an emotion into its physical triggers, interpretations, body sensations, and urges as the first step to managing feelings.
+                *   **Radical Acceptance:** Releasing the fight against reality, reducing suffering into more manageable pain.
+                *   **Validation:** Acknowledging your or others' feelings as understandable in the present moment.
+                *   **Check the Facts:** Evaluating whether your emotional intensity matches the factual, objective reality.
+                *   **Opposite Action:** Acting intentionally opposite to an emotional urge when the emotion does not fit the facts.
+                *   **Problem-solving:** Developing achievable action plans to alter a difficult situation when your emotion does fit the facts.
+                """)
+            st.write("---")
+            st.subheader("Select a skill to view instructions and record a practice entry:")
+            skills = ["Describing the Emotion", "Radical Acceptance", "Validation", "Check the Facts",
+                      "Opposite Action", "Problem-solving"]
+
+        elif cat == "Interpersonal Effectiveness":
+            st.markdown("""
+                ### 💬 Interpersonal Effectiveness Overview
+                Tools to help you balance your objectives, relationships, and self-respect during communications, requests, and disagreements.
+
+                *   **The Dime Game:** A quick 10-question quiz to decide how strongly to ask for something or say 'No' to a request.
+                *   **DEARMAN:** A script/approach that clearly expresses your needs and results in your objective being met. Examples include obtaining your rights, needing something from someone, refusing unreasonable requests and being heard
+                *   **GIVE:** A script/approach where protecting and maintaining healthy relationships is the priority - balances immediate foals with the greater good.
+                *   **FAST:** A script/approach designed to aid truthful communication and maintain self-respect i.e. upholding your beliefs and making you feel capable.
+                """)
+            st.write("---")
+            st.subheader("Select a skill to view instructions and record a practice entry:")
+            skills = ["The Dime Game", "DEARMAN", "GIVE", "FAST"]
+
+        # Dynamically generate navigation buttons matching the group array selection
+        for s in skills:
+            if st.button(f"🎯 Practice / View {s}", key=f"cat_overview_{s}", use_container_width=True):
+                if s == "The Dime Game":
+                    st.session_state.page = "Dime_Game"
+                    st.session_state.dime_game_step = 0
+                    st.session_state.dime_game_answers = {}
+                else:
+                    st.session_state.page = "Skill_Detail"
+                    st.session_state.selected_skill = s
+                st.rerun()
+
 
     elif st.session_state.page == "Skill_Detail":
         skill = st.session_state.selected_skill
@@ -728,25 +854,13 @@ if app_mode == "🎯 Practice Skills":
 
             if skill == "Wise Mind":
                 st.markdown("""
-                **Definition:** The integration of Reasonable Mind (logic) and Emotion Mind (feelings).  
+                **Definition:** A balance of the Reasonable Mind (logic) and the Emotional Mind (feelings).  
                 **Steps:** * Breathe in, focus on the word **'Wise'**.  
                 * Breathe out, focus on the word **'Mind'**.  
-                * Ask your inner self: *What is the wise choice here?*
+                * Repeat this 10 times
+                * Now, ask your inner self: *What is the wise choice AKA middle path here?*
                 """)
                 full_notes = st.text_area("Write down what your Wise Mind is telling you right now:")
-            elif skill == "Positive Experiences":
-                st.markdown("""
-                **Cope Ahead & Positive Experiences:** * Build short-term positive experiences (doing something pleasant daily).  
-                * Work toward long-term positive experiences (taking steps that align directly with your life values).  
-                * **Cope Ahead:** Anticipate high-stress future scenarios, plan effective skills ahead of time, and visualize yourself applying them successfully.
-                """)
-                full_notes = st.text_area("What is a future scenario you want to Cope Ahead for? Describe your plan:")
-            elif skill == "Building Mastery":
-                st.markdown("""
-                **Steps:** * Do things that make you feel competent, effective, and in control.  
-                * Plan at least one difficult but fully achievable task daily.
-                """)
-                full_notes = st.text_area("What is a task you can do today that makes you feel competent?")
             elif skill == "STOP":
                 st.subheader("STOP Skill")
                 st.markdown("""
@@ -756,14 +870,16 @@ if app_mode == "🎯 Practice Skills":
                 **P** - **Proceed mindfully.** What is the most effective next step?
                 """)
                 full_notes = st.text_area("Write down what you are observing right now to practice 'O' (Observe):")
+                st.write("---")
+                st.write("Consider using **TIPP** or **Distract (ACCEPTS)** next as 'P'!")
             elif skill == "TIPP":
                 st.subheader("TIPP Skill")
-                st.write("Change your body chemistry to reduce extreme physical activation fast:")
+                st.write("'Shock' your body to reduce extreme physical distress fast:")
                 st.markdown("""
-                * **T**emperature (Splash cold water on face)
-                * **I**ntense Exercise (Do jumping jacks or run in place)
-                * **P**aced Breathing (Breathe in for 4, out for 6)
-                * **P**aired Muscle Relaxation (Tense a muscle group, then release)
+                * **T**emperature - change the temperature quickly e.g. icepack on forehead, cold shower
+                * **I**ntense Exercise - to boost endorphins and combat negative emotions - could be a dance workout, running up the stairs etc.
+                * **P**aced Breathing - breathe in for 4, out for 6
+                * **P**aired Muscle Relaxation - tense a muscle group as you breathe in, then release as you breathe out, repeat.
                 """)
                 selected_tipp = st.selectbox("Which TIPP action did you perform?", ["Cold Temperature", "Intense Exercise", "Paced Breathing", "Paired Muscle Relaxation"])
                 practice = st.text_area(f"How do you feel physically after performing {selected_tipp}?")
@@ -782,39 +898,36 @@ if app_mode == "🎯 Practice Skills":
             elif skill == "Distract":
                 st.markdown("""
                 Practice using **ACCEPTS**:  
-                * **A**ctivities  
-                * **C**ontributing  
-                * **C**omparisons  
-                * **E**motions  
-                * **P**ushing away  
-                * **T**houghts  
-                * **S**ensations
+                * **A**ctivities - choose a meaningful activity that requires thought/concentration e.g. a craft 
+                * **C**ontributing - focus your mind away from yourself, volunteer to help someone else e.g. writing a card for a friend
+                * **C**omparisons  - remind yourself that other people and yourself have got through situations that are just as hard as this
+                * **E**motions - switch up your emotions with an activity e.g. watching a comedy show if you feel sad
+                * **P**ushing away - don't give those negative thoughts headspace - you can physically do this by writing it all out and scrunching up the paper
+                * **T**houghts  - when emotions are very strong try to focus on thinking e.g. counting in 3s
+                * **S**ensations - find safe physical sensations to distract e.g. sour or spicy foods, ice cubes etc.
                 """)
                 full_notes = st.text_area("Which ACCEPTS distraction technique will you use?")
             elif skill in ["Self-Soothe", "Self-Soother"]:
-                st.write("Soothe your 5 senses: Vision, Hearing, Smell, Taste, Touch.")
+                st.markdown("""
+                Soothe your senses:  
+                * **Vision** - e.g. find a satisfying photography video on your phone such as the night sky
+                * **Hearing** - e.g. listen to music, podcasts, audiobooks or soundscapes
+                * **Touch**  - e.g. a warm shower, textured fidgets or stroking pets
+                * **Taste** - e.g. a comforting taste such as sweets or chewing gum, focusing on the taste
+                * **Smell** - e.g. light a scented candle, smell the scent of your safe person/place e.g. perfume or laundry detergent
+                                """)
                 full_notes = st.text_area("How will you soothe your senses right now?")
             elif skill == "Validation":
                 st.markdown("""
                 Acknowledge yours or others' emotions as valid, normal responses to situations.  
-                **Key Validation Steps:** * Pay attention fully (no multi-tasking).  
-                * Reflect back accurately.  
+                **Key Validation Steps:** * Pay attention fully (no multi-tasking allowed!).  
+                * Reflect back on what you/or the other person are saying/doing.  
                 * Be sensitive to non-verbal cues.  
-                * Express how their thoughts or feelings make sense in context.  
+                * Express how your/their thoughts or feelings make sense in context.  
                 * Acknowledge the valid reality.  
                 * Show radical equality.
                 """)
                 full_notes = st.text_area("Describe your validation practice here:")
-            elif skill == "Describing the Emotion":
-                st.subheader("Describing the Emotion")
-                st.write("To manage an emotion, we must first put a name and physical facts to it.")
-                what_happened = st.text_input("Describe the events leading up to this moment - what happened and when?")
-                emotion_name = st.text_input("Name the primary emotion (e.g., Anger, Sadness, Shame):")
-                sec_emotion_name = st.text_input("Name any secondary emotions below")
-                body_sensation = st.text_input("Where do you feel this in your body physically?")
-                craved_action = st.text_input("What did you want to do as a result of how you felt?")
-                actual_action = st.text_input("What did you do and say (actions and behaviours engaged in)")
-                full_notes = f"What Happened: {what_happened} | Primary: {emotion_name} | Secondary: {sec_emotion_name} | Sensation: {body_sensation} | Urge: {craved_action} | Action: {actual_action}"
             elif skill == "Radical Acceptance":
                 st.subheader("Radical Acceptance & Willingness")
                 st.write("Observe and practice letting go of fighting reality. Tell yourself: *'This is the situation, and this is how I feel right now. I don't have to like it, but I cannot change this exact second - all events have led to now.'*")
@@ -827,7 +940,7 @@ if app_mode == "🎯 Practice Skills":
                 with col_lnk1:
                     if st.button("📊 Open Pros & Cons Manual Page", use_container_width=True, key="manual_lnk_pc"):
                         st.session_state.page = "Skill_Detail"
-                        st.session_skill = "Pros & Cons"
+                        st.session_state.selected_skill = "Pros & Cons"
                         st.rerun()
                 with col_lnk2:
                     if st.button("🚀 Open Positive Experiences (Cope Ahead)", use_container_width=True, key="manual_lnk_pe"):
@@ -835,15 +948,79 @@ if app_mode == "🎯 Practice Skills":
                         st.session_state.selected_skill = "Positive Experiences"
                         st.rerun()
                 full_notes = f"Fighting Reality: {fighting_reality} | Willingness: {willingness_notes} | Acceptance: {acceptance}"
+            elif skill == "IMPROVE":
+                st.markdown("""
+                **I**magery e.g. choose something visually soothing - watching favourite craft videos, playing satisfying games or pictures of a safe place
+                **M**eaning e.g. remind yourself that you are learning and growing from this situation!
+                **P**rayer e.g. have faith in your own strength or wisdom, talk to the universe, meditate
+                **R**elaxation e.g. hot bath/shower, yoga, warm drink - whatever works for you!
+                **O**ne thing e.g. focus on what is in front of you, get stuck into a task, observing every small step
+                **V**acation e.g. go out into nature, turn off your phone, take a nap
+                **E**ncouragement e.g. remind yourself that you are doing better than you think - little you is so proud!
+                """)
+            elif skill == "Describing the Emotion":
+                st.subheader("Describing the Emotion")
+                st.write("To manage an emotion, we must first put a name and physical facts to it.")
+                what_happened = st.text_input("Describe the events leading up to this moment - what happened and when? What is your interpretation/belief about the situation?")
+                body_sensation = st.text_input("Where do you feel this in your body physically?")
+                craved_action = st.text_input("What did you want to do as a result of how you felt?")
+                actual_action = st.text_input("What did you do and say (actions and behaviours engaged in)")
+                emotion_name = st.text_input("Name the primary emotion (e.g., Anger, Sadness, Shame):")
+                sec_emotion_name = st.text_input("Name any secondary emotions below")
+                intensity = st.text_input("Rate the intensity of the emotion")
+                full_notes = f"What Happened: {what_happened} | Primary: {emotion_name} | Secondary: {sec_emotion_name} | Sensation: {body_sensation} | Urge: {craved_action} | Action: {actual_action} | Intensity: {intensity}"
             elif skill == "Check the Facts":
-                st.write("Compare your emotional reactions to the physical reality of the situation.")
+                st.write("Compare your emotional reactions to the physical reality of the situation. When you are feeling overwhelmed, list small tasks and start with the first one.")
                 full_notes = st.text_area("Where do you physically hold your current emotional response?\nWhat are your thoughts/beliefs?\nWhat are the facts?\nWhat is the worst outcome\nRecheck the facts")
             elif skill == "Opposite Action":
                 st.write("Act opposite to your current emotional urge if your emotion doesn't match the facts.")
                 full_notes = st.text_area("What is your action urge and is it effective? Write the opposite action you will take (actions & words).")
             elif skill == "Problem-solving":
                 st.write("When emotions are appropriate, break the issue down into actionable, concrete tasks.")
-                full_notes = st.text_area("What is the problem (check the facts here)?\nWhat is the short-term goal?\\nList top 3 solutions\nPros & Cons to choose\nBreakdown into steps")
+                full_notes = st.text_area("What is the problem (check the facts here)?\nWhat is the short-term goal?\nList top 3 solutions\nPros & Cons to choose\nBreakdown into steps")
+            elif skill == "Positive Experiences":
+                st.markdown("""
+                * Build short-term positive experiences (doing something pleasant daily).  
+                * Work toward long-term positive experiences (taking steps that align directly with your life values).
+                """)
+                full_notes = st.text_area("What is a future scenario you want to use Cope Ahead for? Describe your plan:")
+            elif skill == "Building Mastery":
+                st.markdown("""
+                **Steps:** * Do things that make you feel competent, effective, and in control.  
+                * Plan at least one difficult but fully achievable task daily.
+                """)
+                full_notes = st.text_area("What is a task you can do today that makes you feel competent?")
+            elif skill == "Cope Ahead":
+                st.markdown("""
+                **Cope Ahead:** Anticipate high-stress future scenarios, plan effective skills ahead of time, and visualize yourself applying them successfully.
+                """)
+                describe_ca = st.text_area(" What are the facts of the situation? What emotions and action urges may interfere with my skills?")
+                decide_ca = st.text_area("How will I cope with this situation?")
+                rehearse_ca = st.text_area("Write what you will think and say, what skills you will use to cope and how you will act")
+                st.write("Imagine yourself in the situation and rehearse coping with new problems arising and your 'most feared' scenario?")
+                selected_de = st.selectbox(
+                    "Choose a post-practice relaxation, save your work and then select the button to take you there",
+                    ["Self-Soothe", "Distract (ACCEPTS)"]
+                )
+                full_notes = f"Describe: {describe_ca} | Decide: {decide_ca} | Ideal: {rehearse_ca} | Relax: {selected_de}"
+                col_lnk1, col_lnk2 = st.columns(2)
+                with col_lnk1:
+                    if st.button("Self-Soothe", use_container_width=True, key="manual_lnk_pc"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "Self-Soothe"
+                        st.rerun()
+                with col_lnk2:
+                    if st.button("Distract (ACCEPTS)", use_container_width=True, key="manual_lnk_pe"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "Distract"
+                        st.rerun()
+            elif skill == "PLEASE":
+                st.markdown("""
+                **P & L** = Looking after yourself **physically** e.g. taking meds, attending GP appointments
+                **E** = **Eating** well - aiming for a wide variety of foods, prioritising nutrient dense foods
+                **A** = **Avoiding** addictive habits e.g. social media, alcohol, drugs etc.
+                **S** = **Sleep** routine in place to get good quality of sleep
+                **E** = **Exercise** in a way that suits you (and your health!) """)
             elif skill == "DEARMAN":
                 st.markdown("""
                 **D** - **Describe** the situation with facts ONLY.  
@@ -1002,7 +1179,23 @@ elif app_mode == "🗓️ Weekly Diary Card":
     st.title("🗓️ Weekly DBT Diary Card")
     st.write(f"Tracking scope for: **{selected_week_label}**")
     st.write("---")
-    TRACKED_SKILLS = ["Wise Mind", "Observe/Describe/Participate", "STOP Skill", "TIPP Skill", "Pros & Cons", "Self-Soothe", "Mindfulness of Emotion", "Check the Facts", "Opposite Action", "Problem Solving", "DEARMAN", "GIVE/FAST"]
+    TRACKED_SKILLS = ["Wise Mind",
+                      "What Skills",
+                      "How Skills",
+                      "STOP Skill",
+                      "TIPP Skill",
+                      "Pros & Cons",
+                      "Distract (ACCEPTS)",
+                      "Self-Soothe",
+                      "Radical Acceptance",
+                      "Mindfulness of Emotion",
+                      "Check the Facts",
+                      "Opposite Action",
+                      "Problem Solving",
+                      "Positive Experiences",
+                      "Building Mastery",
+                      "DEARMAN",
+                      "GIVE/FAST"]
     DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
     if os.path.exists(DIARY_FILE):
