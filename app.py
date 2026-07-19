@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import os
 import random
 from streamlit_calendar import calendar
+import time
 
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
@@ -16,11 +17,25 @@ def save_and_sync_filesystem():
     except:
         pass
 
+# ==========================================
+# STEP 1: USER PROFILE & PERSISTENT STORAGE INITIALIZATION
+# ==========================================
 # 1. Establish our secure, physical hard path reference inside pyodide user space
 STORAGE_DIR = "/home/pyodide/dbt_storage"
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
-# 2. Check if there is a saved profile name from a previous session
+# 2. Add an internal verification wait loop to allow browser IndexedDB blocks to wake up
+if "fs_initialized" not in st.session_state:
+    try:
+        import js
+        # Force an initial pull from browser memory layers straight to Pyodide
+        js.window.stliteFileSystem.syncFS()
+        time.sleep(0.5)  # Safe 500ms anchor for file tracking systems to align
+    except:
+        pass
+    st.session_state.fs_initialized = True
+
+# 3. Check if there is a saved profile name from a previous session
 LAST_USER_FILE = f"{STORAGE_DIR}/last_user.txt"
 default_profile = "default"
 
@@ -33,7 +48,7 @@ if os.path.exists(LAST_USER_FILE):
     except:
         pass
 
-# 3. Render the sidebar input with the auto-remembered name
+# 4. Render the sidebar input with the auto-remembered name
 st.sidebar.title("👤 User Profile")
 raw_user = st.sidebar.text_input(
     "Enter Profile Name:",
