@@ -1,27 +1,14 @@
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>DBT Companion</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.73.0/build/stlite.css" />
-    <style>
-      html, body, #root {
-        height: 100vh;
-        margin: 0;
-        padding: 0;
-        background-color: #FFFFFF;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.73.0/build/stlite.js"></script>
-    <script>
+<script>
       stlite.mount({
         requirements: ["pandas", "streamlit-calendar"],
         entrypoint: "app.py",
+        // Maps permanent browser storage directly inside your home workspace directory
+        mountPoints: {
+          "idb": {
+            mountPoint: "/home/pyodide/dbt_storage",
+            name: "dbt_storage"
+          }
+        },
         files: {
           "app.py": {
             url: "app.py"
@@ -36,5 +23,3 @@ textColor = "#1F2937"
         }
       }, document.getElementById("root"));
     </script>
-  </body>
-</html>

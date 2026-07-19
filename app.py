@@ -9,27 +9,22 @@ from streamlit_calendar import calendar
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
 # ==========================================
-# STEP 1: USER PROFILE INITIALIZATION
+# STEP 1: USER PROFILE & PERSISTENT STORAGE INITIALIZATION
 # ==========================================
-# --- Page Config ---
-st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
+# 1. Define our safe, writable persistent folder path
+STORAGE_DIR = "/home/pyodide/dbt_storage"
+os.makedirs(STORAGE_DIR, exist_ok=True)
 
-# ==========================================
-# STEP 1: USER PROFILE INITIALIZATION
-# ==========================================
 st.sidebar.title("👤 User Profile")
 raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your name so when logs are downloaded they include your name.")
 clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
 if not clean_username:
     clean_username = "default"
 
-# 1. Ensure the hardware directory exists in the sandbox first
-os.makedirs("/idb", exist_ok=True)
+# 2. Lock down paths completely inside our persistent storage directory
+LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
 
-# 2. Set the dynamic log file path inside the persistent directory
-LOG_FILE = f"/idb/dbt_logs_{clean_username}.csv"
-
-# 3. Securely bootstrap the file layout if it's missing
+# 3. Securely bootstrap the default empty master file layout if missing
 if not os.path.exists(LOG_FILE):
     pd.DataFrame(columns=[
         "Timestamp", "Event Type", "Rating Before", "Rating After",
@@ -113,7 +108,8 @@ for i in range(5):
 selected_week_label = st.sidebar.selectbox("Select Week Scope:", week_options, index=0)
 active_week_meta = week_mapping[selected_week_label]
 
-DIARY_FILE = f"dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
+# Ensure DIARY_FILE also uses the secure STORAGE_DIR directory prefix variable
+DIARY_FILE = f"{STORAGE_DIR}/dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
 
 # --- Helper function to log standard skills ---
 def log_event(event_type, rating_before=None, rating_after=None, skill_used=None, notes=None):
