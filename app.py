@@ -31,23 +31,21 @@ if "fs_initialized" not in st.session_state:
         import js
 
         js.window.stliteFileSystem.syncFS()
-        time.sleep(0.5)  # Safe 500ms anchor for file tracking systems to align
+        time.sleep(0.3)  # Brief baseline synchronization anchor
     except:
         pass
     st.session_state.fs_initialized = True
 
-# 3. Check if there is a saved profile name from a previous session
-LAST_USER_FILE = f"{STORAGE_DIR}/last_user.txt"
+# 3. Pull the saved username straight from the browser's instant JavaScript memory cache
 default_profile = "default"
+try:
+    import js
 
-if os.path.exists(LAST_USER_FILE):
-    try:
-        with open(LAST_USER_FILE, "r") as f:
-            saved_name = f.read().strip()
-            if saved_name:
-                default_profile = saved_name
-    except:
-        pass
+    saved_name = js.window.localStorage.getItem("dbt_saved_username")
+    if saved_name:
+        default_profile = str(saved_name).strip()
+except:
+    pass
 
 # 4. Wrap profile changes inside a form to prevent character-by-character crash loops
 with st.sidebar.form(key="profile_form"):
@@ -59,24 +57,24 @@ with st.sidebar.form(key="profile_form"):
     )
     submit_profile = st.form_submit_button("Confirm & Load Profile", use_container_width=True)
 
-# 5. Determine the clean active username context
+# 5. Route app context and manage hard cache flushes
 if submit_profile:
-    # If the user clicked the button, parse what they just typed
     clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
     if not clean_username:
         clean_username = "default"
 
-    # Save this specific name to our persistent file immediately
+    # Secure the profile name instantly into the browser's hardware storage
     try:
-        with open(LAST_USER_FILE, "w") as f:
-            f.write(clean_username)
+        import js
+
+        js.window.localStorage.setItem("dbt_saved_username", clean_username)
         save_and_sync_filesystem()
         st.success(f"Profile locked: {clean_username}")
         st.rerun()
     except:
         pass
 else:
-    # If the page is just reloading naturally, stick strictly to the loaded default_profile
+    # On natural reload, read directly from our bulletproof browser item catch
     clean_username = default_profile
 
 # 6. Map file targets securely inside our persistent hardware directory
