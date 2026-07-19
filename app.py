@@ -7,10 +7,52 @@ from streamlit_calendar import calendar
 
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
+# 1. Establish our secure, physical hard path reference inside pyodide user space
+STORAGE_DIR = "/home/pyodide/dbt_storage"
+os.makedirs(STORAGE_DIR, exist_ok=True)
 
-# ==========================================
-# SIDEBAR NAVIGATION & DATA MANAGEMENT
-# ==========================================
+# 2. Check if there is a saved profile name from a previous session
+LAST_USER_FILE = f"{STORAGE_DIR}/last_user.txt"
+default_profile = "default"
+
+if os.path.exists(LAST_USER_FILE):
+    try:
+        with open(LAST_USER_FILE, "r") as f:
+            saved_name = f.read().strip()
+            if saved_name:
+                default_profile = saved_name
+    except:
+        pass
+
+# 3. Render the sidebar input with the auto-remembered name
+st.sidebar.title("👤 User Profile")
+raw_user = st.sidebar.text_input(
+    "Enter Profile Name:",
+    value=default_profile,
+    help="Type your custom identifier name to isolate your logs. The app will remember this name next time!"
+)
+
+clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
+if not clean_username:
+    clean_username = "default"
+
+# 4. Save this name as the last used profile for next time
+if clean_username != default_profile:
+    try:
+        with open(LAST_USER_FILE, "w") as f:
+            f.write(clean_username)
+    except:
+        pass
+
+# 5. Map file targets securely inside our persistent hardware directory
+LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
+
+# --- Virtual Storage Path Bootstrapping ---
+if not os.path.exists(LOG_FILE):
+    pd.DataFrame(columns=[
+        "Timestamp", "Event Type", "Rating Before", "Rating After",
+        "Skill Practiced", "Notes/Practice Text"
+    ]).to_csv(LOG_FILE, index=False)
 # ==========================================
 # SIDEBAR NAVIGATION & DATA MANAGEMENT
 # ==========================================
