@@ -17,111 +17,53 @@ def save_and_sync_filesystem():
     except:
         pass
 
-
 # ==========================================
-# STEP 1: USER PROFILE & PERSISTENT STORAGE INITIALIZATION
-# ==========================================
-# ==========================================
-# STEP 1: STAGED INITIALIZATION
+# STEP 1: SINGLE-SOURCE INITIALIZATION
 # ==========================================
 STORAGE_DIR = "/home/pyodide/dbt_storage"
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
-# 1. Force the sync BEFORE any file checks
-if "sync_done" not in st.session_state:
-    try:
-        import js
-        js.window.stliteFileSystem.syncFS()
-        time.sleep(1.0) # Longer wait for IndexedDB to mount
-    except:
-        pass
-    st.session_state.sync_done = True
+# Force mount synchronization
+try:
+    import js
+    js.window.stliteFileSystem.syncFS()
+except:
+    pass
 
-# 2. NOW it is safe to check for files
-LAST_USER_FILE = f"{STORAGE_DIR}/last_user.txt"
-default_profile = "default"
-
-if os.path.exists(LAST_USER_FILE):
-    with open(LAST_USER_FILE, "r") as f:
-        default_profile = f.read().strip()
-
-# 3. Form submission... (your existing code)
-
-# 2. Add an internal verification wait loop to allow browser IndexedDB blocks to wake up
-if "fs_initialized" not in st.session_state:
-    try:
-        import js
-
-        js.window.stliteFileSystem.syncFS()
-        time.sleep(0.3)  # Brief baseline synchronization anchor
-    except:
-        pass
-    st.session_state.fs_initialized = True
-
-# 3. Pull the saved username straight from the browser's hidden memory cache
-# This keeps the URL clean and your profile name invisible to the address bar.
+# Retrieve the username from the browser's hidden memory FIRST
 default_profile = "default"
 try:
     import js
-
     saved_name = js.window.localStorage.getItem("dbt_saved_username")
     if saved_name and saved_name != "null":
         default_profile = str(saved_name).strip()
 except:
     pass
 
-# 4. Profile Input Form
+# User Profile Form
 with st.sidebar.form(key="profile_form"):
     st.write("👤 **User Profile Manager**")
-    raw_user = st.text_input(
-        "Enter Profile Name:",
-        value=default_profile,
-        help="Type your custom identifier name to isolate your logs."
-    )
-    submit_profile = st.form_submit_button("Confirm & Load Profile", use_container_width=True)
+    raw_user = st.text_input("Enter Profile Name:", value=default_profile)
+    submit_profile = st.form_submit_button("Confirm & Load Profile")
 
-# 5. Route app context and manage hard cache flushes
 if submit_profile:
     clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
-    if not clean_username:
-        clean_username = "default"
-
-    # Save the username into the browser's persistent memory
     try:
         import js
-
         js.window.localStorage.setItem("dbt_saved_username", clean_username)
-
-        # --- AUTO-IMPORT TRIGGER ---
-        # Define the target log file for this user
-        target_log = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
-
-        # If the file exists, we don't need to do anything; the app will just read it.
-        # If it doesn't exist, we create the skeleton so it's ready for data.
-        if not os.path.exists(target_log):
-            pd.DataFrame(columns=[
-                "Timestamp", "Event Type", "Rating Before", "Rating After",
-                "Skill Practiced", "Notes/Practice Text"
-            ]).to_csv(target_log, index=False)
-
         save_and_sync_filesystem()
-        st.success(f"Profile locked and storage mapped for: {clean_username}")
         st.rerun()
     except:
-        pass
+        clean_username = clean_username or "default"
 else:
     clean_username = default_profile
 
-# 6. Map file targets securely inside our persistent hardware directory
 LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
-
-# --- Virtual Storage Path Bootstrapping ---
+# Only create the file if it truly doesn't exist on the mounted disk
 if not os.path.exists(LOG_FILE):
-    pd.DataFrame(columns=[
-        "Timestamp", "Event Type", "Rating Before", "Rating After",
-        "Skill Practiced", "Notes/Practice Text"
-    ]).to_csv(LOG_FILE, index=False)
+    pd.DataFrame(columns=["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced", "Notes/Practice Text"]).to_csv(LOG_FILE, index=False)
     save_and_sync_filesystem()
+
 
 # ==========================================
 # SIDEBAR NAVIGATION & DATA MANAGEMENT
