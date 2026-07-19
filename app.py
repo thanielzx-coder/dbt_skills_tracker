@@ -21,9 +21,6 @@ app_mode = st.sidebar.radio(
 )
 
 st.sidebar.write("---")
-# ==========================================
-# STEP 1: USER PROFILE INITIALIZATION
-# ==========================================
 st.sidebar.title("👤 User Profile")
 raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your name so when logs are downloaded they include your name.")
 clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
