@@ -36,18 +36,19 @@ if "fs_initialized" not in st.session_state:
         pass
     st.session_state.fs_initialized = True
 
-# 3. Pull the saved username straight from the browser's instant JavaScript memory cache
+# 3. Pull the saved username straight from the browser's hidden memory cache
+# This keeps the URL clean and your profile name invisible to the address bar.
 default_profile = "default"
 try:
     import js
 
     saved_name = js.window.localStorage.getItem("dbt_saved_username")
-    if saved_name:
+    if saved_name and saved_name != "null":
         default_profile = str(saved_name).strip()
 except:
     pass
 
-# 4. Wrap profile changes inside a form to prevent character-by-character crash loops
+# 4. Profile Input Form
 with st.sidebar.form(key="profile_form"):
     st.write("👤 **User Profile Manager**")
     raw_user = st.text_input(
@@ -57,13 +58,12 @@ with st.sidebar.form(key="profile_form"):
     )
     submit_profile = st.form_submit_button("Confirm & Load Profile", use_container_width=True)
 
-# 5. Route app context and manage hard cache flushes
+# 5. Route app context and save profile to hidden browser storage
 if submit_profile:
     clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
     if not clean_username:
         clean_username = "default"
 
-    # Secure the profile name instantly into the browser's hardware storage
     try:
         import js
 
@@ -74,7 +74,6 @@ if submit_profile:
     except:
         pass
 else:
-    # On natural reload, read directly from our bulletproof browser item catch
     clean_username = default_profile
 
 # 6. Map file targets securely inside our persistent hardware directory
