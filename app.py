@@ -152,12 +152,8 @@ def log_event(event_type, rating_before=None, rating_after=None, skill_used=None
     else:
         new_df.to_csv(LOG_FILE, index=False)
 
-    # Explicitly force save into the browser's permanent cache block
-    try:
-        with open(LOG_FILE, "r") as f:
-            st.context.browser.local_storage[f"backup_cache_{clean_username}"] = f.read()
-    except:
-        pass
+    # Note: All st.context.browser code blocks have been fully removed from here
+    # so the storage engine can write securely to your hard disk folder unhindered.
 
 # --- Helper to Map Logged Skills to Diary Card Categories ---
 def map_logged_skill_to_diary(logged_skill):
