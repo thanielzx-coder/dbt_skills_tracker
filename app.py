@@ -26,7 +26,7 @@ if not os.path.exists(LOG_FILE):
         "Skill Practiced", "Notes/Practice Text"
     ]).to_csv(LOG_FILE, index=False)
 
-# --- Persistent Local Storage Syncing for Browsers (Moved below profile creation) ---
+# --- Persistent Local Storage Syncing for Browsers ---
 if f"backup_cache_{clean_username}" in st.context.browser.local_storage:
     try:
         cached_data = st.context.browser.local_storage[f"backup_cache_{clean_username}"]
