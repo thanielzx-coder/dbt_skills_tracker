@@ -66,25 +66,6 @@ app_mode = st.sidebar.radio(
 )
 
 st.sidebar.write("---")
-st.sidebar.title("👤 User Profile")
-raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your name so when logs are downloaded they include your name.")
-clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
-if not clean_username:
-    clean_username = "default"
-
-# 1. Establish our secure, physical hard path reference inside pyodide user space
-STORAGE_DIR = "/home/pyodide/dbt_storage"
-os.makedirs(STORAGE_DIR, exist_ok=True)
-
-# 2. Map file targets securely inside our persistent hardware directory
-LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
-
-# --- Virtual Storage Path Bootstrapping ---
-if not os.path.exists(LOG_FILE):
-    pd.DataFrame(columns=[
-        "Timestamp", "Event Type", "Rating Before", "Rating After",
-        "Skill Practiced", "Notes/Practice Text"
-    ]).to_csv(LOG_FILE, index=False)
 
 st.sidebar.title("💾 Data Backup Manager")
 
