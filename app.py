@@ -9,6 +9,19 @@ from streamlit_calendar import calendar
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
 # ==========================================
+# SIDEBAR NAVIGATION & DATA MANAGEMENT
+# ==========================================
+st.sidebar.info("🧘 Use this companion daily to monitor your distress, practice DBT skills, and track progress over time.")
+st.sidebar.write("---")
+st.sidebar.title("🧭 Navigation")
+app_mode = st.sidebar.radio(
+    "Go to:",
+    ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"],
+    key="sidebar_navigation_menu"
+)
+
+st.sidebar.write("---")
+# ==========================================
 # STEP 1: USER PROFILE INITIALIZATION
 # ==========================================
 st.sidebar.title("👤 User Profile")
@@ -26,19 +39,6 @@ if not os.path.exists(LOG_FILE):
         "Skill Practiced", "Notes/Practice Text"
     ]).to_csv(LOG_FILE, index=False)
 
-# ==========================================
-# SIDEBAR NAVIGATION & DATA MANAGEMENT
-# ==========================================
-st.sidebar.info("🧘 Use this companion daily to monitor your distress, practice DBT skills, and track progress over time.")
-st.sidebar.write("---")
-st.sidebar.title("🧭 Navigation")
-app_mode = st.sidebar.radio(
-    "Go to:",
-    ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"],
-    key="sidebar_navigation_menu"
-)
-
-st.sidebar.write("---")
 st.sidebar.title("💾 Data Backup Manager")
 
 # 1. EXPORT: Download current browser data to phone storage
