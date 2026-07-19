@@ -22,10 +22,10 @@
       stlite.mount({
         requirements: ["pandas", "streamlit-calendar"],
         entrypoint: "app.py",
-        // FORCES the browser to mount a permanent hardware folder for files
+        // UPDATED: Mounts permanent browser storage directly inside your home workspace directory
         mountPoints: {
           "idb": {
-            mountPoint: "/idb",
+            mountPoint: "/home/pyodide/dbt_storage",
             name: "dbt_storage"
           }
         },

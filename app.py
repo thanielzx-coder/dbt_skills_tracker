@@ -9,15 +9,19 @@ from streamlit_calendar import calendar
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
 # ==========================================
-# STEP 1: USER PROFILE INITIALIZATION
+# STEP 1: USER PROFILE & PERSISTENT STORAGE INITIALIZATION
 # ==========================================
+# Securely establish our writable hardware-mirrored directory
+STORAGE_DIR = "/home/pyodide/dbt_storage"
+os.makedirs(STORAGE_DIR, exist_ok=True)
+
 st.sidebar.title("👤 User Profile")
 raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your name so when logs are downloaded they include your name.")
 clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
 if not clean_username:
     clean_username = "default"
 
-LOG_FILE = f"/idb/dbt_logs_{clean_username}.csv"
+LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
 
 # --- Virtual Storage Path Bootstrapping ---
 if not os.path.exists(LOG_FILE):
@@ -103,7 +107,7 @@ for i in range(5):
 selected_week_label = st.sidebar.selectbox("Select Week Scope:", week_options, index=0)
 active_week_meta = week_mapping[selected_week_label]
 
-DIARY_FILE = f"dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
+DIARY_FILE = f"{STORAGE_DIR}/dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
 
 # --- Helper function to log standard skills ---
 def log_event(event_type, rating_before=None, rating_after=None, skill_used=None, notes=None):
