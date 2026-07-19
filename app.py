@@ -11,9 +11,12 @@ st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centere
 # ==========================================
 # SIDEBAR NAVIGATION & DATA MANAGEMENT
 # ==========================================
+# ==========================================
+# SIDEBAR NAVIGATION & DATA MANAGEMENT
+# ==========================================
 st.sidebar.info("🧘 Use this companion daily to monitor your distress, practice DBT skills, and track progress over time.")
 st.sidebar.write("---")
-st.sidebar.title("🧭 Navigation")
+st.sidebar.title("Compass Navigation")
 app_mode = st.sidebar.radio(
     "Go to:",
     ["🎯 Practice Skills", "📖 Read & View Logs", "🗓️ Weekly Diary Card"],
@@ -27,7 +30,12 @@ clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).
 if not clean_username:
     clean_username = "default"
 
-LOG_FILE = f"dbt_logs_{clean_username}.csv"
+# 1. Establish our secure, physical hard path reference inside pyodide user space
+STORAGE_DIR = "/home/pyodide/dbt_storage"
+os.makedirs(STORAGE_DIR, exist_ok=True)
+
+# 2. Map file targets securely inside our persistent hardware directory
+LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
 
 # --- Virtual Storage Path Bootstrapping ---
 if not os.path.exists(LOG_FILE):
@@ -100,7 +108,8 @@ for i in range(5):
 selected_week_label = st.sidebar.selectbox("Select Week Scope:", week_options, index=0)
 active_week_meta = week_mapping[selected_week_label]
 
-DIARY_FILE = f"dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
+# Ensure DIARY_FILE also writes inside our persistent hardware directory block
+DIARY_FILE = f"{STORAGE_DIR}/dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
 
 # --- Helper function to log standard skills ---
 def log_event(event_type, rating_before=None, rating_after=None, skill_used=None, notes=None):
