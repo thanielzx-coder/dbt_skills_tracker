@@ -7,6 +7,15 @@ from streamlit_calendar import calendar
 
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
+
+# Helper function to force the browser's virtual disk to sync with your hardware storage
+def save_and_sync_filesystem():
+    try:
+        import js
+        js.window.stliteFileSystem.syncFS()
+    except:
+        pass
+
 # 1. Establish our secure, physical hard path reference inside pyodide user space
 STORAGE_DIR = "/home/pyodide/dbt_storage"
 os.makedirs(STORAGE_DIR, exist_ok=True)
@@ -41,6 +50,7 @@ if clean_username != default_profile:
     try:
         with open(LAST_USER_FILE, "w") as f:
             f.write(clean_username)
+        save_and_sync_filesystem()  # <-- FORCE SYNC AFTER WRITING USER NAME
     except:
         pass
 
@@ -53,6 +63,8 @@ if not os.path.exists(LOG_FILE):
         "Timestamp", "Event Type", "Rating Before", "Rating After",
         "Skill Practiced", "Notes/Practice Text"
     ]).to_csv(LOG_FILE, index=False)
+    save_and_sync_filesystem()  # <-- FORCE SYNC AFTER INITIALIZING BASE DATA
+
 # ==========================================
 # SIDEBAR NAVIGATION & DATA MANAGEMENT
 # ==========================================
@@ -135,6 +147,7 @@ active_week_meta = week_mapping[selected_week_label]
 DIARY_FILE = f"{STORAGE_DIR}/dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
 
 # --- Helper function to log standard skills ---
+# --- Helper function to log standard skills ---
 def log_event(event_type, rating_before=None, rating_after=None, skill_used=None, notes=None):
     new_entry = {
         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -152,8 +165,8 @@ def log_event(event_type, rating_before=None, rating_after=None, skill_used=None
     else:
         new_df.to_csv(LOG_FILE, index=False)
 
-    # Note: All st.context.browser code blocks have been fully removed from here
-    # so the storage engine can write securely to your hard disk folder unhindered.
+    # Hard flush the newly added entry into the device's persistent cache
+    save_and_sync_filesystem()  # <-- ADD THIS LINE HERE
 
 # --- Helper to Map Logged Skills to Diary Card Categories ---
 def map_logged_skill_to_diary(logged_skill):
@@ -867,6 +880,7 @@ if app_mode == "🎯 Practice Skills":
                 with col_save:
                     if st.button("💾 Save Practice to Logs", use_container_width=True):
                         log_event("Mindfulness Practice", rating_before=detail_rating_before, rating_after=detail_rating_after, skill_used=f"{st.session_state.rand_mind_skill}: {st.session_state.rand_mind_sub}", notes=full_notes)
+                        save_and_sync_filesystem()  # <-- ADD THIS LINE HERE
                         st.success("Practice successfully recorded!")
                         st.session_state.current_rating = detail_rating_after
                         go_home()
@@ -1094,6 +1108,7 @@ if app_mode == "🎯 Practice Skills":
                 if st.button("💾 Record as Used / Save Notes", use_container_width=True):
                     log_event("Manual Skill Use", rating_before=detail_rating_before, rating_after=detail_rating_after, skill_used=skill, notes=full_notes)
                     st.success("Successfully logged skill usage!")
+                    save_and_sync_filesystem()  # <-- ADD THIS LINE HERE
                     st.session_state.current_rating = detail_rating_after
                     go_home()
                     st.rerun()
@@ -1154,6 +1169,7 @@ elif app_mode == "📖 Read & View Logs":
                                 master_df = pd.read_csv(LOG_FILE)
                                 master_df = master_df.drop(index)
                                 master_df.to_csv(LOG_FILE, index=False)
+                                save_and_sync_filesystem()  # <-- ADD THIS LINE HERE
                                 st.success("Entry removed from logs successfully!")
                                 st.rerun()
                 else:
@@ -1194,6 +1210,7 @@ elif app_mode == "📖 Read & View Logs":
                         master_df = pd.read_csv(LOG_FILE)
                         master_df = master_df.drop(clicked_id)
                         master_df.to_csv(LOG_FILE, index=False)
+                        save_and_sync_filesystem()  # <-- ADD THIS LINE HERE
                         st.success("Entry successfully removed from calendar database!")
                         st.rerun()
 
@@ -1269,6 +1286,7 @@ elif app_mode == "🗓️ Weekly Diary Card":
     with col_btn1:
         if st.button("💾 Save Diary Card Progress", use_container_width=True):
             edited_df.to_csv(DIARY_FILE)
+            save_and_sync_filesystem()  # <-- ADD THIS LINE HERE
             st.success("Diary card configurations saved successfully!")
             st.rerun()
     with col_btn2:
