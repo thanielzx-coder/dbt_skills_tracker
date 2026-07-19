@@ -17,6 +17,7 @@ def save_and_sync_filesystem():
     except:
         pass
 
+
 # ==========================================
 # STEP 1: USER PROFILE & PERSISTENT STORAGE INITIALIZATION
 # ==========================================
@@ -28,6 +29,7 @@ os.makedirs(STORAGE_DIR, exist_ok=True)
 if "fs_initialized" not in st.session_state:
     try:
         import js
+
         js.window.stliteFileSystem.syncFS()
         time.sleep(0.5)  # Safe 500ms anchor for file tracking systems to align
     except:
@@ -57,12 +59,14 @@ with st.sidebar.form(key="profile_form"):
     )
     submit_profile = st.form_submit_button("Confirm & Load Profile", use_container_width=True)
 
-clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
-if not clean_username:
-    clean_username = "default"
-
-# 5. Only execute saving and hard flushes when the user intentionally clicks the button
+# 5. Determine the clean active username context
 if submit_profile:
+    # If the user clicked the button, parse what they just typed
+    clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
+    if not clean_username:
+        clean_username = "default"
+
+    # Save this specific name to our persistent file immediately
     try:
         with open(LAST_USER_FILE, "w") as f:
             f.write(clean_username)
@@ -71,6 +75,9 @@ if submit_profile:
         st.rerun()
     except:
         pass
+else:
+    # If the page is just reloading naturally, stick strictly to the loaded default_profile
+    clean_username = default_profile
 
 # 6. Map file targets securely inside our persistent hardware directory
 LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
