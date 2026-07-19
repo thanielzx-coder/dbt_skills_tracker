@@ -9,22 +9,17 @@ from streamlit_calendar import calendar
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
 # ==========================================
-# STEP 1: USER PROFILE & PERSISTENT STORAGE INITIALIZATION
+# STEP 1: USER PROFILE INITIALIZATION
 # ==========================================
-# 1. Define our safe, writable persistent folder path
-STORAGE_DIR = "/home/pyodide/dbt_storage"
-os.makedirs(STORAGE_DIR, exist_ok=True)
-
 st.sidebar.title("👤 User Profile")
 raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your name so when logs are downloaded they include your name.")
 clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
 if not clean_username:
     clean_username = "default"
 
-# 2. Lock down paths completely inside our persistent storage directory
-LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
+LOG_FILE = f"/idb/dbt_logs_{clean_username}.csv"
 
-# 3. Securely bootstrap the default empty master file layout if missing
+# --- Virtual Storage Path Bootstrapping ---
 if not os.path.exists(LOG_FILE):
     pd.DataFrame(columns=[
         "Timestamp", "Event Type", "Rating Before", "Rating After",
@@ -108,8 +103,7 @@ for i in range(5):
 selected_week_label = st.sidebar.selectbox("Select Week Scope:", week_options, index=0)
 active_week_meta = week_mapping[selected_week_label]
 
-# Ensure DIARY_FILE also uses the secure STORAGE_DIR directory prefix variable
-DIARY_FILE = f"{STORAGE_DIR}/dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
+DIARY_FILE = f"dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
 
 # --- Helper function to log standard skills ---
 def log_event(event_type, rating_before=None, rating_after=None, skill_used=None, notes=None):
@@ -128,7 +122,6 @@ def log_event(event_type, rating_before=None, rating_after=None, skill_used=None
         updated_df.to_csv(LOG_FILE, index=False)
     else:
         new_df.to_csv(LOG_FILE, index=False)
-
 
 # --- Helper to Map Logged Skills to Diary Card Categories ---
 def map_logged_skill_to_diary(logged_skill):
