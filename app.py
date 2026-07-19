@@ -26,17 +26,6 @@ if not os.path.exists(LOG_FILE):
         "Skill Practiced", "Notes/Practice Text"
     ]).to_csv(LOG_FILE, index=False)
 
-# --- Persistent Local Storage Syncing for Browsers ---
-if f"backup_cache_{clean_username}" in st.context.browser.local_storage:
-    try:
-        cached_data = st.context.browser.local_storage[f"backup_cache_{clean_username}"]
-        # If the virtual sandbox file is empty but the browser cache has data, restore it
-        if not os.path.exists(LOG_FILE) or os.path.getsize(LOG_FILE) <= 100:
-            with open(LOG_FILE, "w") as f:
-                f.write(cached_data)
-    except:
-        pass
-
 # ==========================================
 # SIDEBAR NAVIGATION & DATA MANAGEMENT
 # ==========================================
@@ -133,13 +122,6 @@ def log_event(event_type, rating_before=None, rating_after=None, skill_used=None
         updated_df.to_csv(LOG_FILE, index=False)
     else:
         new_df.to_csv(LOG_FILE, index=False)
-
-    # Explicitly force save into the browser's permanent cache block
-    try:
-        with open(LOG_FILE, "r") as f:
-            st.context.browser.local_storage[f"backup_cache_{clean_username}"] = f.read()
-    except:
-        pass
 
 # --- Helper to Map Logged Skills to Diary Card Categories ---
 def map_logged_skill_to_diary(logged_skill):
