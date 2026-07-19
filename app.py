@@ -28,7 +28,6 @@ os.makedirs(STORAGE_DIR, exist_ok=True)
 if "fs_initialized" not in st.session_state:
     try:
         import js
-        # Force an initial pull from browser memory layers straight to Pyodide
         js.window.stliteFileSystem.syncFS()
         time.sleep(0.5)  # Safe 500ms anchor for file tracking systems to align
     except:
@@ -48,28 +47,32 @@ if os.path.exists(LAST_USER_FILE):
     except:
         pass
 
-# 4. Render the sidebar input with the auto-remembered name
-st.sidebar.title("👤 User Profile")
-raw_user = st.sidebar.text_input(
-    "Enter Profile Name:",
-    value=default_profile,
-    help="Type your custom identifier name to isolate your logs. The app will remember this name next time!"
-)
+# 4. Wrap profile changes inside a form to prevent character-by-character crash loops
+with st.sidebar.form(key="profile_form"):
+    st.write("👤 **User Profile Manager**")
+    raw_user = st.text_input(
+        "Enter Profile Name:",
+        value=default_profile,
+        help="Type your custom identifier name to isolate your logs."
+    )
+    submit_profile = st.form_submit_button("Confirm & Load Profile", use_container_width=True)
 
 clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
 if not clean_username:
     clean_username = "default"
 
-# 4. Save this name as the last used profile for next time
-if clean_username != default_profile:
+# 5. Only execute saving and hard flushes when the user intentionally clicks the button
+if submit_profile:
     try:
         with open(LAST_USER_FILE, "w") as f:
             f.write(clean_username)
-        save_and_sync_filesystem()  # <-- FORCE SYNC AFTER WRITING USER NAME
+        save_and_sync_filesystem()
+        st.success(f"Profile locked: {clean_username}")
+        st.rerun()
     except:
         pass
 
-# 5. Map file targets securely inside our persistent hardware directory
+# 6. Map file targets securely inside our persistent hardware directory
 LOG_FILE = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
 
 # --- Virtual Storage Path Bootstrapping ---
@@ -78,7 +81,7 @@ if not os.path.exists(LOG_FILE):
         "Timestamp", "Event Type", "Rating Before", "Rating After",
         "Skill Practiced", "Notes/Practice Text"
     ]).to_csv(LOG_FILE, index=False)
-    save_and_sync_filesystem()  # <-- FORCE SYNC AFTER INITIALIZING BASE DATA
+    save_and_sync_filesystem()
 
 # ==========================================
 # SIDEBAR NAVIGATION & DATA MANAGEMENT
