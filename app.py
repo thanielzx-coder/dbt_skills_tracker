@@ -11,15 +11,25 @@ st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centere
 # ==========================================
 # STEP 1: USER PROFILE INITIALIZATION
 # ==========================================
+# --- Page Config ---
+st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
+
+# ==========================================
+# STEP 1: USER PROFILE INITIALIZATION
+# ==========================================
 st.sidebar.title("👤 User Profile")
 raw_user = st.sidebar.text_input("Enter Profile Name:", value="default", help="Type your name so when logs are downloaded they include your name.")
 clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
 if not clean_username:
     clean_username = "default"
 
-LOG_FILE = f"dbt_logs_{clean_username}.csv"
+# 1. Ensure the hardware directory exists in the sandbox first
+os.makedirs("/idb", exist_ok=True)
 
-# --- Virtual Storage Path Bootstrapping ---
+# 2. Set the dynamic log file path inside the persistent directory
+LOG_FILE = f"/idb/dbt_logs_{clean_username}.csv"
+
+# 3. Securely bootstrap the file layout if it's missing
 if not os.path.exists(LOG_FILE):
     pd.DataFrame(columns=[
         "Timestamp", "Event Type", "Rating Before", "Rating After",
