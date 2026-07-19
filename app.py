@@ -21,9 +21,31 @@ def save_and_sync_filesystem():
 # ==========================================
 # STEP 1: USER PROFILE & PERSISTENT STORAGE INITIALIZATION
 # ==========================================
-# 1. Establish our secure, physical hard path reference inside pyodide user space
+# ==========================================
+# STEP 1: STAGED INITIALIZATION
+# ==========================================
 STORAGE_DIR = "/home/pyodide/dbt_storage"
 os.makedirs(STORAGE_DIR, exist_ok=True)
+
+# 1. Force the sync BEFORE any file checks
+if "sync_done" not in st.session_state:
+    try:
+        import js
+        js.window.stliteFileSystem.syncFS()
+        time.sleep(1.0) # Longer wait for IndexedDB to mount
+    except:
+        pass
+    st.session_state.sync_done = True
+
+# 2. NOW it is safe to check for files
+LAST_USER_FILE = f"{STORAGE_DIR}/last_user.txt"
+default_profile = "default"
+
+if os.path.exists(LAST_USER_FILE):
+    with open(LAST_USER_FILE, "r") as f:
+        default_profile = f.read().strip()
+
+# 3. Form submission... (your existing code)
 
 # 2. Add an internal verification wait loop to allow browser IndexedDB blocks to wake up
 if "fs_initialized" not in st.session_state:
@@ -58,18 +80,32 @@ with st.sidebar.form(key="profile_form"):
     )
     submit_profile = st.form_submit_button("Confirm & Load Profile", use_container_width=True)
 
-# 5. Route app context and save profile to hidden browser storage
+# 5. Route app context and manage hard cache flushes
 if submit_profile:
     clean_username = "".join(c for c in raw_user if c.isalnum() or c in ("_", "-")).strip().lower()
     if not clean_username:
         clean_username = "default"
 
+    # Save the username into the browser's persistent memory
     try:
         import js
 
         js.window.localStorage.setItem("dbt_saved_username", clean_username)
+
+        # --- AUTO-IMPORT TRIGGER ---
+        # Define the target log file for this user
+        target_log = f"{STORAGE_DIR}/dbt_logs_{clean_username}.csv"
+
+        # If the file exists, we don't need to do anything; the app will just read it.
+        # If it doesn't exist, we create the skeleton so it's ready for data.
+        if not os.path.exists(target_log):
+            pd.DataFrame(columns=[
+                "Timestamp", "Event Type", "Rating Before", "Rating After",
+                "Skill Practiced", "Notes/Practice Text"
+            ]).to_csv(target_log, index=False)
+
         save_and_sync_filesystem()
-        st.success(f"Profile locked: {clean_username}")
+        st.success(f"Profile locked and storage mapped for: {clean_username}")
         st.rerun()
     except:
         pass
@@ -169,7 +205,14 @@ active_week_meta = week_mapping[selected_week_label]
 DIARY_FILE = f"{STORAGE_DIR}/dbt_weekly_diary_{clean_username}_{active_week_meta['suffix']}.csv"
 
 # --- Helper function to log standard skills ---
-# --- Helper function to log standard skills ---
+@st.cache_data(ttl=1)  # The TTL=1 ensures it re-reads from disk every single second
+def get_log_data(file_path):
+    if os.path.exists(file_path):
+        return pd.read_csv(file_path)
+    return pd.DataFrame(
+        columns=["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced", "Notes/Practice Text"])
+
+
 def log_event(event_type, rating_before=None, rating_after=None, skill_used=None, notes=None):
     new_entry = {
         "Timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -179,16 +222,14 @@ def log_event(event_type, rating_before=None, rating_after=None, skill_used=None
         "Skill Practiced": skill_used if skill_used else "",
         "Notes/Practice Text": notes if notes else ""
     }
-    new_df = pd.DataFrame([new_entry])
-    if os.path.exists(LOG_FILE):
-        existing_df = pd.read_csv(LOG_FILE)
-        updated_df = pd.concat([existing_df, new_df], ignore_index=True)
-        updated_df.to_csv(LOG_FILE, index=False)
-    else:
-        new_df.to_csv(LOG_FILE, index=False)
 
-    # Hard flush the newly added entry into the device's persistent cache
-    save_and_sync_filesystem()  # <-- ADD THIS LINE HERE
+    # Use our new cached function to get fresh data
+    existing_df = get_log_data(LOG_FILE)
+    new_df = pd.DataFrame([new_entry])
+    updated_df = pd.concat([existing_df, new_df], ignore_index=True)
+    updated_df.to_csv(LOG_FILE, index=False)
+
+    save_and_sync_filesystem()
 
 # --- Helper to Map Logged Skills to Diary Card Categories ---
 def map_logged_skill_to_diary(logged_skill):
