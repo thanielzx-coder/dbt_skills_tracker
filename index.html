@@ -22,7 +22,6 @@
       stlite.mount({
         requirements: ["pandas", "streamlit-calendar"],
         entrypoint: "app.py",
-        // FIXED: Maps the browser's persistent storage to the safe user directory space
         mountPoints: {
           "idb": {
             mountPoint: "/home/pyodide/dbt_storage",
@@ -41,7 +40,12 @@ secondaryBackgroundColor = "#F3F4F6"
 textColor = "#1F2937"
 `
         }
-      }, document.getElementById("root"));
+      }, document.getElementById("root")).then((kernel) => {
+        // FORCES the browser to automatically save changes from Python back to your hard device storage
+        window.addEventListener("beforeunload", () => {
+          kernel.flushFiles();
+        });
+      });
     </script>
   </body>
 </html>
