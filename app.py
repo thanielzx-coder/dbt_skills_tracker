@@ -3,7 +3,6 @@ import pandas as pd
 from datetime import datetime, timedelta
 import os
 import random
-
 from streamlit_calendar import calendar
 import time
 import platform
