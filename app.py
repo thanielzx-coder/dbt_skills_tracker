@@ -178,8 +178,12 @@ def map_logged_skill_to_diary(logged_skill):
         return "TIPP Skill"
     if "pros" in logged_skill_lower and "cons" in logged_skill_lower:
         return "Pros & Cons"
+    if "distract" in logged_skill_lower:
+        return "Distract"
     if "soothe" in logged_skill_lower:
         return "Self-Soothe"
+    if "improve" in logged_skill_lower:
+        return "IMPROVE"
     if "validation" in logged_skill_lower:
         return "Validation"
     if "describing" in logged_skill_lower or "describe emotion" in logged_skill_lower:
@@ -459,7 +463,7 @@ if app_mode == "🎯 Practice Skills":
         col1, col2 = st.columns(2)
 
         with col1:
-            with st.expander("🧘 **Mindfulness & Foundations**", expanded=True):
+            with st.expander("🧘 **Mindfulness & Foundations**", expanded=False):
                 st.write(
                     "Focusing the mind, directing attention, and being present, as well as identifying positive experiences and keeping to positive routines to support your emotional wellbeing.")
                 if st.button("📖 Open Mindfulness Overview", use_container_width=True, key="lnk_idx_mind"):
@@ -467,7 +471,7 @@ if app_mode == "🎯 Practice Skills":
                     st.session_state.selected_category = "Mindfulness & Foundations"
                     st.rerun()
 
-            with st.expander("🚒 **Distress Tolerance**", expanded=True):
+            with st.expander("🚒 **Distress Tolerance**", expanded=False):
                 st.write("Surviving crisis situations without making them worse.")
                 if st.button("📖 Open Distress Tolerance Overview", use_container_width=True, key="lnk_idx_distress"):
                     st.session_state.page = "Category_Overview"
@@ -475,14 +479,14 @@ if app_mode == "🎯 Practice Skills":
                     st.rerun()
 
         with col2:
-            with st.expander("🌊 **Emotional Regulation**", expanded=True):
+            with st.expander("🌊 **Emotional Regulation**", expanded=False):
                 st.write("Understanding and managing intense emotions.")
                 if st.button("📖 Open Emotional Regulation Overview", use_container_width=True, key="lnk_idx_emotion"):
                     st.session_state.page = "Category_Overview"
                     st.session_state.selected_category = "Emotional Regulation"
                     st.rerun()
 
-            with st.expander("💬 **Interpersonal Effectiveness**", expanded=True):
+            with st.expander("💬 **Interpersonal Effectiveness**", expanded=False):
                 st.write("Navigating conflict and communicating assertively.")
                 if st.button("📖 Open Interpersonal Overview", use_container_width=True, key="lnk_idx_inter"):
                     st.session_state.page = "Category_Overview"
@@ -894,13 +898,14 @@ if app_mode == "🎯 Practice Skills":
             "TIPP Skill": "https://i.pinimg.com/originals/c5/02/49/c50249b2d7158a5ebe574c3e8403e01a.gif",
             "Pros & Cons": "https://i.pinimg.com/736x/fd/db/8e/fddb8e4b0bbc15ee221af78731f9f586.jpg",
             "Distract": "https://i.pinimg.com/736x/07/2b/d5/072bd5ff5c9977f7583bc700d6af7267.jpg",
+            "IMPROVE": "https://i.pinimg.com/1200x/df/1b/9d/df1b9d97fbf879675eee97702db31d20.jpg",
             "Self-Soothe": "https://i.pinimg.com/736x/e0/52/9f/e0529f122b60172ca5bcb66e53f35e79.jpg",
             "Validation": "https://i.pinimg.com/736x/35/ec/c0/35ecc0786e1a2b63315ddda8834049bc.jpg",
             "Radical Acceptance": "https://i.pinimg.com/1200x/d5/c9/ca/d5c9cad9cf5e058ae743aaaa0e90ad10.jpg",
-            "Describing Emotion": "https://i.pinimg.com/736x/84/17/fa/8417fa15a322a8d99d6f22f279b7717a.jpg",
+            "Describing the Emotion": "https://i.pinimg.com/736x/84/17/fa/8417fa15a322a8d99d6f22f279b7717a.jpg",
             "Check the Facts": "https://i.pinimg.com/736x/4f/04/44/4f0444afb8df95b046be6c694237f086.jpg",
             "Opposite Action": "https://i.pinimg.com/736x/2c/fa/52/2cfa521ce5ab2b2ef794feabd4da0e19.jpg",
-            "Problem Solving": "https://i.pinimg.com/1200x/ca/39/13/ca3913a712104ec2f352ece16d741130.jpg",
+            "Problem-solving": "https://i.pinimg.com/1200x/ca/39/13/ca3913a712104ec2f352ece16d741130.jpg",
             "Positive Experiences": "https://i.pinimg.com/1200x/52/eb/3e/52eb3e0472317f713eb128bf43e7ca73.jpg",
             "Building Mastery": "https://i.pinimg.com/736x/d9/e1/88/d9e188974dc1d122f49176f491d2438f.jpg",
             "Cope Ahead": "https://i.pinimg.com/736x/c1/eb/b6/c1ebb6ea1659665d778bb71190b6e031.jpg",
@@ -911,7 +916,7 @@ if app_mode == "🎯 Practice Skills":
         skill = st.session_state.selected_skill
         st.subheader(f"📖 Skill Manual: {skill}")
         if skill in SKILL_IMAGES:
-            st.image(SKILL_IMAGES[skill], caption=f"{skill} Visual Guide", use_column_width=True)
+            st.image(SKILL_IMAGES[skill], use_container_width=True)
             st.write("---")
         full_notes = ""
 
@@ -1236,7 +1241,7 @@ elif app_mode == "🗓️ Weekly Diary Card":
     st.write("---")
     TRACKED_SKILLS = [
         "Wise Mind", "What Skills", "How Skills", "PLEASE", "STOP Skill", "TIPP Skill", "Pros & Cons",
-        "Distract", "Self-Soothe", "Validation", "Radical Acceptance", "Describing Emotion",
+        "Distract", "IMPROVE", "Self-Soothe", "Validation", "Radical Acceptance", "Describing Emotion",
         "Check the Facts", "Opposite Action", "Problem Solving", "Positive Experiences",
         "Building Mastery", "Cope Ahead", "DEARMAN", "GIVE/FAST"]
     DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
