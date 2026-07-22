@@ -885,7 +885,6 @@ if app_mode == "🎯 Practice Skills":
                 st.rerun()
 
     elif st.session_state.page == "Skill_Detail":
-        skill = st.session_state.selected_skill
         # Force browser to scroll to the top of the main container on page load
         components.html(
             """
