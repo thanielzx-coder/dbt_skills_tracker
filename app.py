@@ -11,6 +11,32 @@ import platform
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
+# Force scroll to top on every page render with fallback timers to override Streamlit's scroll restoration
+components.html(
+    """
+    <script>
+        function scrollToTop() {
+            try {
+                var parentDoc = window.parent.document;
+                var appContainer = parentDoc.querySelector('[data-testid="stAppViewContainer"]') || parentDoc.querySelector('section.main');
+                if (appContainer) {
+                    appContainer.scrollTop = 0;
+                }
+                window.parent.scrollTo(0, 0);
+            } catch (e) {
+                console.log(e);
+            }
+        }
+        scrollToTop();
+        setTimeout(scrollToTop, 50);
+        setTimeout(scrollToTop, 150);
+        setTimeout(scrollToTop, 300);
+    </script>
+    """,
+    height=0,
+    width=0,
+)
+
 # Determine local system path
 if platform.system() == "Windows":
     base_path = os.getenv("APPDATA")
@@ -885,21 +911,6 @@ if app_mode == "🎯 Practice Skills":
                 st.rerun()
 
     elif st.session_state.page == "Skill_Detail":
-        # Force browser to scroll to the top of the main container on page load
-        components.html(
-            """
-            <script>
-                var mainSection = window.parent.document.querySelector('section.main');
-                if (mainSection) {
-                    mainSection.scrollTo(0, 0);
-                }
-                window.parent.scrollTo(0, 0);
-            </script>
-            """,
-            height=0,
-            width=0,
-        )
-
         skill = st.session_state.selected_skill
 
         # 1. Reverse map the skill to its category to ensure the header is always correct
