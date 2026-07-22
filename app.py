@@ -1,5 +1,4 @@
 import streamlit as st
-import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime, timedelta
 import os
@@ -7,34 +6,31 @@ import random
 from streamlit_calendar import calendar
 import time
 import platform
+import io
 
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
-# Force scroll to top on every page render with fallback timers to override Streamlit's scroll restoration
-components.html(
+# ==========================================
+# MOBILE-NATIVE AUTO-SCROLL TO TOP MECHANISM
+# ==========================================
+# Injects an anchor element + native CSS smooth-scroll instruction targeting the main app container
+st.markdown(
     """
-    <script>
-        function scrollToTop() {
-            try {
-                var parentDoc = window.parent.document;
-                var appContainer = parentDoc.querySelector('[data-testid="stAppViewContainer"]') || parentDoc.querySelector('section.main');
-                if (appContainer) {
-                    appContainer.scrollTop = 0;
-                }
-                window.parent.scrollTo(0, 0);
-            } catch (e) {
-                console.log(e);
-            }
+    <div id="top_page_anchor"></div>
+    <style>
+        html, body, [data-testid="stAppViewContainer"] {
+            scroll-behavior: auto !important;
         }
-        scrollToTop();
-        setTimeout(scrollToTop, 50);
-        setTimeout(scrollToTop, 150);
-        setTimeout(scrollToTop, 300);
+    </style>
+    <script>
+        var anchor = parent.document.getElementById('top_page_anchor');
+        if (anchor) {
+            anchor.scrollIntoView({behavior: 'instant', block: 'start'});
+        }
     </script>
     """,
-    height=0,
-    width=0,
+    unsafe_allow_html=True
 )
 
 # Determine local system path
@@ -46,7 +42,7 @@ else:
 STORAGE_DIR = os.path.join(base_path, "DBT_Companion_Data")
 os.makedirs(STORAGE_DIR, exist_ok=True)
 
-# Single global log file path (No profiles)
+# Single global log file path
 LOG_FILE = os.path.join(STORAGE_DIR, "dbt_logs.csv")
 
 # Ensure base log file exists
@@ -86,29 +82,39 @@ if os.path.exists(LOG_FILE):
             help="Saves your current private log file to your device."
         )
 
-# 2. IMPORT: Upload backup with loop prevention & header cleaning
+# 2. IMPORT: Mobile-Optimized File Processor
 uploaded_backup = st.sidebar.file_uploader(
     "Import a backup file:",
-    type="csv",
+    type=["csv", "txt"],
+    key="mobile_csv_uploader",
     help="Upload a previously exported CSV file to restore your logs."
 )
 
 if uploaded_backup is not None:
-    if "file_imported" not in st.session_state:
-        st.session_state.file_imported = False
+    if "import_processed_key" not in st.session_state:
+        st.session_state.import_processed_key = None
 
-    if not st.session_state.file_imported:
+    # Compare uploaded file identifier to prevent execution loops on mobile
+    current_file_id = f"{uploaded_backup.name}_{uploaded_backup.size}"
+
+    if st.session_state.import_processed_key != current_file_id:
         try:
             st.cache_data.clear()
-            imported_df = pd.read_csv(uploaded_backup)
-            imported_df.columns = imported_df.columns.str.strip()
+
+            # Read bytes and decode cleanly across iOS/Android buffers
+            raw_bytes = uploaded_backup.getvalue()
+            decoded_text = raw_bytes.decode('utf-8-sig', errors='replace')
+
+            imported_df = pd.read_csv(io.StringIO(decoded_text))
+            imported_df.columns = imported_df.columns.astype(str).str.strip()
+
             required_columns = ["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced",
                                 "Notes/Practice Text"]
 
             if all(col in imported_df.columns for col in required_columns):
                 final_df = imported_df[required_columns]
                 final_df.to_csv(LOG_FILE, index=False)
-                st.session_state.file_imported = True
+                st.session_state.import_processed_key = current_file_id
                 st.sidebar.success("🎉 Backup data imported successfully!")
                 time.sleep(0.5)
                 st.rerun()
@@ -116,8 +122,6 @@ if uploaded_backup is not None:
                 st.sidebar.error("❌ Invalid backup file format. Column mismatch detected.")
         except Exception as e:
             st.sidebar.error(f"❌ Failed to parse backup file: {str(e)}")
-else:
-    st.session_state.file_imported = False
 
 # ------------------------------------------
 # WEEK SCOPE CONFIGURATIONS
@@ -174,7 +178,6 @@ def log_event(event_type, rating_before=None, rating_after=None, skill_used=None
     updated_df = pd.concat([existing_df, new_df], ignore_index=True)
     updated_df.to_csv(LOG_FILE, index=False)
 
-    # Store latest exported CSV bytes in session state for instant download
     csv_bytes = updated_df.to_csv(index=False).encode('utf-8')
     st.session_state["latest_export_bytes"] = csv_bytes
     st.session_state["show_export_banner"] = True
@@ -234,7 +237,7 @@ def map_logged_skill_to_diary(logged_skill):
 if "page" not in st.session_state:
     st.session_state.page = "Home"
 if "selected_category" not in st.session_state:
-    st.session_state.selected_category = "Mindfulness & Foundations"  # Default fallback
+    st.session_state.selected_category = "Mindfulness & Foundations"
 if "flow_step" not in st.session_state:
     st.session_state.flow_step = 0
 if "current_rating" not in st.session_state:
@@ -303,7 +306,6 @@ if st.session_state.get("show_export_banner", False):
 # VIEW 1: PRACTICE SKILLS
 # ==========================================
 if app_mode == "🎯 Practice Skills":
-    # Only show the main app header if we are NOT on a skill detail page
     if st.session_state.page != "Skill_Detail":
         col_h1, col_h2 = st.columns([4, 1])
         with col_h1:
@@ -546,7 +548,7 @@ if app_mode == "🎯 Practice Skills":
             st.markdown("""
             * **T**emperature (Splash cold water on face)
             * **I**ntense Exercise (Do jumping jacks or run in place)
-            * **P**aced Breathing (Breathe in for 4, out for 6)
+            * **P**paced Breathing (Breathe in for 4, out for 6)
             * **P**aired Muscle Relaxation (Tense a muscle group, then release)
             """)
             selected_tipp = st.selectbox("Which TIPP action did you perform?",
