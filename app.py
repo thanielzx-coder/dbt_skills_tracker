@@ -206,6 +206,8 @@ def map_logged_skill_to_diary(logged_skill):
 # --- Initialize Session States ---
 if "page" not in st.session_state:
     st.session_state.page = "Home"
+if "selected_category" not in st.session_state:
+    st.session_state.selected_category = "Mindfulness & Foundations"  # Default fallback
 if "flow_step" not in st.session_state:
     st.session_state.flow_step = 0
 if "current_rating" not in st.session_state:
@@ -805,16 +807,6 @@ if app_mode == "🎯 Practice Skills":
     elif st.session_state.page == "Category_Overview":
         cat = st.session_state.selected_category
 
-        col_c1, col_c2 = st.columns([4, 1])
-        with col_c1:
-            st.title(f"🗂️ Category Index: {cat}")
-        with col_c2:
-            if st.button("↩️ Home", key="cat_back_home"):
-                go_home()
-                st.rerun()
-
-        st.write("---")
-
         if cat == "Mindfulness & Foundations":
             st.markdown("""
                 ### 🧘 Mindfulness & Foundations Overview
@@ -891,11 +883,59 @@ if app_mode == "🎯 Practice Skills":
                 st.rerun()
 
     elif st.session_state.page == "Skill_Detail":
+        skill = st.session_state.selected_skill
+
+        # 1. Reverse map the skill to its category to ensure the header is always correct
+        skill_to_cat = {
+            "Wise Mind": "Mindfulness & Foundations",
+            "What & How skills": "Mindfulness & Foundations",
+            "Positive Experiences": "Mindfulness & Foundations",
+            "Building Mastery": "Mindfulness & Foundations",
+            "Cope Ahead": "Mindfulness & Foundations",
+            "PLEASE": "Mindfulness & Foundations",
+            "STOP": "Distress Tolerance",
+            "STOP Skill": "Distress Tolerance",
+            "TIPP": "Distress Tolerance",
+            "TIPP Skill": "Distress Tolerance",
+            "Pros & Cons": "Distress Tolerance",
+            "Distract": "Distress Tolerance",
+            "IMPROVE": "Distress Tolerance",
+            "Self-Soothe": "Distress Tolerance",
+            "Self-Soother": "Distress Tolerance",
+            "Describing the Emotion": "Emotional Regulation",
+            "Radical Acceptance": "Emotional Regulation",
+            "Validation": "Emotional Regulation",
+            "Check the Facts": "Emotional Regulation",
+            "Opposite Action": "Emotional Regulation",
+            "Problem-solving": "Emotional Regulation",
+            "The Dime Game": "Interpersonal Effectiveness",
+            "DEARMAN": "Interpersonal Effectiveness",
+            "GIVE": "Interpersonal Effectiveness",
+            "FAST": "Interpersonal Effectiveness"
+        }
+
+        # Get current category and update state
+        current_cat = skill_to_cat.get(skill, "Skills Library")
+        st.session_state.selected_category = current_cat
+
+        # 2. Build top category header layout
+        col_c1, col_c2 = st.columns([4, 1])
+        with col_c1:
+            st.title(f"🗂️ Category Index: {current_cat}")
+        with col_c2:
+            if st.button("↩️ Overview", key=f"top_back_cat_{skill}"):
+                st.session_state.page = "Category_Overview"
+                st.rerun()
+
+        st.write("---")
+
         SKILL_IMAGES = {
-            "Wise Mind": "https://i.pinimg.com/1200x/4c/7e/ff/4c7eff9a6cd4abf63da63fee61d96701.jpg",
+            "Wise Mind": "https://i.pinimg.com/736x/dc/5b/89/dc5b8956caf323d153ea75de067b068c.jpg",
             "PLEASE": "https://i.pinimg.com/736x/5f/7f/70/5f7f70b54ee07e1a90f5a10cc7e66474.jpg",
             "STOP Skill": "https://i.pinimg.com/1200x/e9/2d/44/e92d44fb36fb9fc5a891304261c492a0.jpg",
+            "STOP": "https://i.pinimg.com/1200x/e9/2d/44/e92d44fb36fb9fc5a891304261c492a0.jpg",
             "TIPP Skill": "https://i.pinimg.com/originals/c5/02/49/c50249b2d7158a5ebe574c3e8403e01a.gif",
+            "TIPP": "https://i.pinimg.com/originals/c5/02/49/c50249b2d7158a5ebe574c3e8403e01a.gif",
             "Pros & Cons": "https://i.pinimg.com/736x/fd/db/8e/fddb8e4b0bbc15ee221af78731f9f586.jpg",
             "Distract": "https://i.pinimg.com/736x/07/2b/d5/072bd5ff5c9977f7583bc700d6af7267.jpg",
             "IMPROVE": "https://i.pinimg.com/1200x/df/1b/9d/df1b9d97fbf879675eee97702db31d20.jpg",
@@ -913,7 +953,7 @@ if app_mode == "🎯 Practice Skills":
             "GIVE": "https://i.pinimg.com/736x/52/54/ce/5254ce62dc30d2c0c94a3a4f56656a8f.jpg",
             "FAST": "https://i.pinimg.com/1200x/fb/a9/53/fba953350572e4d23463d37b95f81c3c.jpg"
         }
-        skill = st.session_state.selected_skill
+
         st.subheader(f"📖 Skill Manual: {skill}")
         if skill in SKILL_IMAGES:
             st.image(SKILL_IMAGES[skill], use_container_width=True)
@@ -981,16 +1021,16 @@ if app_mode == "🎯 Practice Skills":
                                   skill_used=f"{st.session_state.rand_mind_skill}: {st.session_state.rand_mind_sub}",
                                   notes=full_notes)
                         st.session_state.current_rating = detail_rating_after
-                        go_home()
+                        st.session_state.page = "Category_Overview"
                         st.rerun()
                 with col_home:
-                    if st.button("⬅️ Back to Home", use_container_width=True):
-                        go_home()
+                    if st.button("⬅️ Back to Overview Page", use_container_width=True):
+                        st.session_state.page = "Category_Overview"
                         st.rerun()
             else:
                 st.write("*Click the generate button above to start your practice!*")
-                if st.button("⬅️ Back to Home", use_container_width=True, key="back_home_early"):
-                    go_home()
+                if st.button("⬅️ Back to Overview Page", use_container_width=True, key="back_home_early"):
+                    st.session_state.page = "Category_Overview"
                     st.rerun()
         else:
             st.subheader("How are you feeling before starting?")
@@ -1008,7 +1048,7 @@ if app_mode == "🎯 Practice Skills":
                 * Now, ask your inner self: *What is the wise choice AKA middle path here?*
                 """)
                 full_notes = st.text_area("Write down what your Wise Mind is telling you right now:")
-            elif skill == "STOP":
+            elif skill in ["STOP", "STOP Skill"]:
                 st.subheader("STOP Skill")
                 st.markdown("""
                 **S** - **Stop!** Do not react immediately.  
@@ -1017,7 +1057,7 @@ if app_mode == "🎯 Practice Skills":
                 **P** - **Proceed mindfully.** What is the most effective next step?
                 """)
                 full_notes = st.text_area("Write down what you are observing right now to practice 'O' (Observe):")
-            elif skill == "TIPP":
+            elif skill in ["TIPP", "TIPP Skill"]:
                 st.subheader("TIPP Skill")
                 st.write("'Shock' your body to reduce extreme physical distress fast:")
                 st.markdown("""
@@ -1105,11 +1145,11 @@ if app_mode == "🎯 Practice Skills":
                     log_event("Manual Skill Use", rating_before=detail_rating_before, rating_after=detail_rating_after,
                               skill_used=skill, notes=full_notes)
                     st.session_state.current_rating = detail_rating_after
-                    go_home()
+                    st.session_state.page = "Category_Overview"
                     st.rerun()
             with col_s2:
-                if st.button("⬅️ Back to Home", use_container_width=True):
-                    go_home()
+                if st.button("⬅️ Back to Overview Page", use_container_width=True):
+                    st.session_state.page = "Category_Overview"
                     st.rerun()
 
 # ==========================================
