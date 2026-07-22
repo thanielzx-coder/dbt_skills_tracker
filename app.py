@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime, timedelta
 import os
@@ -276,16 +277,17 @@ if st.session_state.get("show_export_banner", False):
 # VIEW 1: PRACTICE SKILLS
 # ==========================================
 if app_mode == "🎯 Practice Skills":
-    col_h1, col_h2 = st.columns([4, 1])
-    with col_h1:
-        st.title("🧘 DBT Companion & Skills Library")
-    with col_h2:
-        if st.session_state.page != "Home":
-            if st.button("↩️ Home"):
-                go_home()
-                st.rerun()
-
-    st.write("---")
+    # Only show the main app header if we are NOT on a skill detail page
+    if st.session_state.page != "Skill_Detail":
+        col_h1, col_h2 = st.columns([4, 1])
+        with col_h1:
+            st.title("🧘 DBT Companion & Skills Library")
+        with col_h2:
+            if st.session_state.page != "Home":
+                if st.button("↩️ Home", key="main_header_home_btn"):
+                    go_home()
+                    st.rerun()
+        st.write("---")
 
     if st.session_state.page == "Home":
         st.subheader("🌡 How are you feeling right now?")
@@ -884,6 +886,22 @@ if app_mode == "🎯 Practice Skills":
 
     elif st.session_state.page == "Skill_Detail":
         skill = st.session_state.selected_skill
+        # Force browser to scroll to the top of the main container on page load
+        components.html(
+            """
+            <script>
+                var mainSection = window.parent.document.querySelector('section.main');
+                if (mainSection) {
+                    mainSection.scrollTo(0, 0);
+                }
+                window.parent.scrollTo(0, 0);
+            </script>
+            """,
+            height=0,
+            width=0,
+        )
+
+        skill = st.session_state.selected_skill
 
         # 1. Reverse map the skill to its category to ensure the header is always correct
         skill_to_cat = {
@@ -923,8 +941,11 @@ if app_mode == "🎯 Practice Skills":
         with col_c1:
             st.title(f"🗂️ Category Index: {current_cat}")
         with col_c2:
-            if st.button("↩️ Overview", key=f"top_back_cat_{skill}"):
+            if st.button("↩️ Overview", key=f"top_back_cat_{skill}", use_container_width=True):
                 st.session_state.page = "Category_Overview"
+                st.rerun()
+            if st.button("🏠 Go Home", key=f"top_go_home_{skill}", use_container_width=True):
+                go_home()
                 st.rerun()
 
         st.write("---")
