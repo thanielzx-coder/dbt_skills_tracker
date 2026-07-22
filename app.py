@@ -249,9 +249,9 @@ if st.sidebar.button("🔄 Reset View State"):
 
 # Global Download Trigger Banner after any logging event
 if st.session_state.get("show_export_banner", False):
-    st.success("✅ Log recorded successfully!")
+    st.success("✅ Log recorded successfully! Save & Download below or lose your data!")
     st.download_button(
-        label="📥 Download Updated Records CSV",
+        label="📥 Save & Download Updated Records CSV",
         data=st.session_state.get("latest_export_bytes", b""),
         file_name=f"dbt_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
         mime="text/csv",
@@ -1206,7 +1206,7 @@ elif app_mode == "🗓️ Weekly Diary Card":
     st.write(f"Tracking scope for: **{selected_week_label}**")
     st.write("---")
     TRACKED_SKILLS = ["Wise Mind", "What Skills", "How Skills", "STOP Skill", "TIPP Skill", "Pros & Cons",
-                      "Distract (ACCEPTS)", "Self-Soothe", "Radical Acceptance", "Mindfulness of Emotion",
+                      "Distract (ACCEPTS)", "Self-Soothe", "Radical Acceptance", "Describing Emotion",
                       "Check the Facts", "Opposite Action", "Problem Solving", "Positive Experiences",
                       "Building Mastery", "DEARMAN", "GIVE/FAST"]
     DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
