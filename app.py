@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import os
 import random
 
-from pyarrow.lib import Type_RUN_END_ENCODED
 from streamlit_calendar import calendar
 import time
 import platform
