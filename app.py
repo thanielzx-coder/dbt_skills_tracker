@@ -180,12 +180,12 @@ def map_logged_skill_to_diary(logged_skill):
         return "Pros & Cons"
     if "soothe" in logged_skill_lower:
         return "Self-Soothe"
+    if "validation" in logged_skill_lower:
+        return "Validation"
     if "describing" in logged_skill_lower or "describe emotion" in logged_skill_lower:
         return "Describing Emotion"
     if "radical acceptance" in logged_skill_lower:
         return "Radical Acceptance"
-    if "validation" in logged_skill_lower:
-        return "Validation"
     if "check the facts" in logged_skill_lower:
         return "Check the Facts"
     if "opposite action" in logged_skill_lower:
@@ -608,50 +608,47 @@ if app_mode == "🎯 Practice Skills":
                 go_home()
                 st.rerun()
 
-        elif st.session_state.page == "Flow_Check_The_Facts":
-            st.info("🔍 Let's examine our thoughts and practice Check the Facts.")
+    elif st.session_state.page == "Flow_Check_The_Facts":
+        st.info("🔍 Let's examine our thoughts and practice Check the Facts.")
 
-            if st.session_state.flow_step == 1:
-                st.subheader("Step 1: Check the Facts")
-                st.write("Identify what is a factual reality versus an interpretation or assumption.")
-                facts = st.text_area(
-                    "What is the actual event? (Only stick to objective facts that a camera could record):")
-                interpretation = st.text_area("What is your interpretation/thought about the event?")
-                st.write("---")
-                st.subheader("Is your emotion intensity appropriate for the facts?")
-                appropriate = st.radio("Is the intensity of your emotion proportional to the actual facts?",
-                                       ("Yes", "No"))
-                if st.button("Record & Proceed", use_container_width=True):
-                    # FIX: Explicitly pass skill_used="Check the Facts"
-                    log_event("Flow - Check the Facts", rating_before=3, skill_used="Check the Facts",
-                              notes=f"Facts: {facts} | Interpretation: {interpretation} | Appropriate: {appropriate}")
-                    st.session_state.is_appropriate = appropriate
-                    st.session_state.flow_step = 2
+        if st.session_state.flow_step == 1:
+            st.subheader("Step 1: Check the Facts")
+            st.write("Identify what is a factual reality versus an interpretation or assumption.")
+            facts = st.text_area(
+                "What is the actual event? (Only stick to objective facts that a camera could record):")
+            interpretation = st.text_area("What is your interpretation/thought about the event?")
+            st.write("---")
+            st.subheader("Is your emotion intensity appropriate for the facts?")
+            appropriate = st.radio("Is the intensity of your emotion proportional to the actual facts?",
+                                   ("Yes", "No"))
+            if st.button("Record & Proceed", use_container_width=True):
+                log_event("Flow - Check the Facts", rating_before=3, skill_used="Check the Facts",
+                          notes=f"Facts: {facts} | Interpretation: {interpretation} | Appropriate: {appropriate}")
+                st.session_state.is_appropriate = appropriate
+                st.session_state.flow_step = 2
+                st.rerun()
+
+        elif st.session_state.flow_step == 2:
+            if st.session_state.is_appropriate == "Yes":
+                st.subheader("Step 2: Problem-Solving")
+                st.write(
+                    "Since the emotion is appropriate, we can problem-solve to try and change or improve the situation.")
+                steps = st.text_area("Identify 3 small steps you can take to solve or cope with this issue:")
+                if st.button("Record & Re-Rate", use_container_width=True):
+                    log_event("Flow - Problem Solving", rating_before=3, skill_used="Problem Solving", notes=steps)
+                    st.session_state.flow_step = 3
                     st.rerun()
-
-            elif st.session_state.flow_step == 2:
-                if st.session_state.is_appropriate == "Yes":
-                    st.subheader("Step 2: Problem-Solving")
-                    st.write(
-                        "Since the emotion is appropriate, we can problem-solve to try and change or improve the situation.")
-                    steps = st.text_area("Identify 3 small steps you can take to solve or cope with this issue:")
-                    if st.button("Record & Re-Rate", use_container_width=True):
-                        # FIX: Explicitly pass skill_used="Problem Solving"
-                        log_event("Flow - Problem Solving", rating_before=3, skill_used="Problem Solving", notes=steps)
-                        st.session_state.flow_step = 3
-                        st.rerun()
-                else:
-                    st.subheader("Step 2: Opposite Action")
-                    st.write(
-                        "Since the emotion intensity does not fit the facts, practice **Opposite Action** to change the emotion.")
-                    st.write(
-                        "- Act opposite to the urge of the emotion (e.g., if feeling avoidant, approach. If feeling angry, gentle behavior).")
-                    action = st.text_area("What is the opposite behavior you will perform right now?")
-                    if st.button("Record & Re-Rate", use_container_width=True):
-                        # FIX: Explicitly pass skill_used="Opposite Action"
-                        log_event("Flow - Opposite Action", rating_before=3, skill_used="Opposite Action", notes=action)
-                        st.session_state.flow_step = 3
-                        st.rerun()
+            else:
+                st.subheader("Step 2: Opposite Action")
+                st.write(
+                    "Since the emotion intensity does not fit the facts, practice **Opposite Action** to change the emotion.")
+                st.write(
+                    "- Act opposite to the urge of the emotion (e.g., if feeling avoidant, approach. If feeling angry, gentle behavior).")
+                action = st.text_area("What is the opposite behavior you will perform right now?")
+                if st.button("Record & Re-Rate", use_container_width=True):
+                    log_event("Flow - Opposite Action", rating_before=3, skill_used="Opposite Action", notes=action)
+                    st.session_state.flow_step = 3
+                    st.rerun()
 
         elif st.session_state.flow_step == 3:
             st.subheader("Let's Re-Rate")
@@ -890,25 +887,27 @@ if app_mode == "🎯 Practice Skills":
                 st.rerun()
 
     elif st.session_state.page == "Skill_Detail":
-        SKILL_IMAGES =  {"Wise Mind": "https://i.pinimg.com/1200x/4c/7e/ff/4c7eff9a6cd4abf63da63fee61d96701.jpg",
-                        "PLEASE": "https://i.pinimg.com/736x/5f/7f/70/5f7f70b54ee07e1a90f5a10cc7e66474.jpg",
-                        "STOP Skill": "https://i.pinimg.com/1200x/e9/2d/44/e92d44fb36fb9fc5a891304261c492a0.jpg",
-                        "TIPP Skill": "https://i.pinimg.com/originals/c5/02/49/c50249b2d7158a5ebe574c3e8403e01a.gif",
-                        "Pros & Cons": "https://i.pinimg.com/736x/fd/db/8e/fddb8e4b0bbc15ee221af78731f9f586.jpg",
-                        "Distract": "https://i.pinimg.com/736x/07/2b/d5/072bd5ff5c9977f7583bc700d6af7267.jpg",
-                        "Self-Soothe": "https://i.pinimg.com/736x/e0/52/9f/e0529f122b60172ca5bcb66e53f35e79.jpg",
-                        "Validation": "https://i.pinimg.com/736x/35/ec/c0/35ecc0786e1a2b63315ddda8834049bc.jpg",
-                        "Radical Acceptance": "https://i.pinimg.com/1200x/d5/c9/ca/d5c9cad9cf5e058ae743aaaa0e90ad10.jpg",
-                        "Describing Emotion": "https://i.pinimg.com/736x/84/17/fa/8417fa15a322a8d99d6f22f279b7717a.jpg",
-                        "Check the Facts": "https://i.pinimg.com/736x/4f/04/44/4f0444afb8df95b046be6c694237f086.jpg",
-                        "Opposite Action": "https://i.pinimg.com/736x/2c/fa/52/2cfa521ce5ab2b2ef794feabd4da0e19.jpg",
-                        "Problem Solving": "https://i.pinimg.com/1200x/ca/39/13/ca3913a712104ec2f352ece16d741130.jpg",
-                        "Positive Experiences": "https://i.pinimg.com/1200x/52/eb/3e/52eb3e0472317f713eb128bf43e7ca73.jpg",
-                        "Building Mastery": "https://i.pinimg.com/736x/d9/e1/88/d9e188974dc1d122f49176f491d2438f.jpg",
-                        "Cope Ahead": "https://i.pinimg.com/736x/c1/eb/b6/c1ebb6ea1659665d778bb71190b6e031.jpg",
-                        "DEARMAN": "https://i.pinimg.com/736x/29/6e/e6/296ee6fa43ce9c630049f889de6cbcce.jpg",
-                        "GIVE": "https://i.pinimg.com/736x/52/54/ce/5254ce62dc30d2c0c94a3a4f56656a8f.jpg",
-                        "FAST": "https://i.pinimg.com/1200x/fb/a9/53/fba953350572e4d23463d37b95f81c3c.jpg"}
+        SKILL_IMAGES = {
+            "Wise Mind": "https://i.pinimg.com/1200x/4c/7e/ff/4c7eff9a6cd4abf63da63fee61d96701.jpg",
+            "PLEASE": "https://i.pinimg.com/736x/5f/7f/70/5f7f70b54ee07e1a90f5a10cc7e66474.jpg",
+            "STOP Skill": "https://i.pinimg.com/1200x/e9/2d/44/e92d44fb36fb9fc5a891304261c492a0.jpg",
+            "TIPP Skill": "https://i.pinimg.com/originals/c5/02/49/c50249b2d7158a5ebe574c3e8403e01a.gif",
+            "Pros & Cons": "https://i.pinimg.com/736x/fd/db/8e/fddb8e4b0bbc15ee221af78731f9f586.jpg",
+            "Distract": "https://i.pinimg.com/736x/07/2b/d5/072bd5ff5c9977f7583bc700d6af7267.jpg",
+            "Self-Soothe": "https://i.pinimg.com/736x/e0/52/9f/e0529f122b60172ca5bcb66e53f35e79.jpg",
+            "Validation": "https://i.pinimg.com/736x/35/ec/c0/35ecc0786e1a2b63315ddda8834049bc.jpg",
+            "Radical Acceptance": "https://i.pinimg.com/1200x/d5/c9/ca/d5c9cad9cf5e058ae743aaaa0e90ad10.jpg",
+            "Describing Emotion": "https://i.pinimg.com/736x/84/17/fa/8417fa15a322a8d99d6f22f279b7717a.jpg",
+            "Check the Facts": "https://i.pinimg.com/736x/4f/04/44/4f0444afb8df95b046be6c694237f086.jpg",
+            "Opposite Action": "https://i.pinimg.com/736x/2c/fa/52/2cfa521ce5ab2b2ef794feabd4da0e19.jpg",
+            "Problem Solving": "https://i.pinimg.com/1200x/ca/39/13/ca3913a712104ec2f352ece16d741130.jpg",
+            "Positive Experiences": "https://i.pinimg.com/1200x/52/eb/3e/52eb3e0472317f713eb128bf43e7ca73.jpg",
+            "Building Mastery": "https://i.pinimg.com/736x/d9/e1/88/d9e188974dc1d122f49176f491d2438f.jpg",
+            "Cope Ahead": "https://i.pinimg.com/736x/c1/eb/b6/c1ebb6ea1659665d778bb71190b6e031.jpg",
+            "DEARMAN": "https://i.pinimg.com/736x/29/6e/e6/296ee6fa43ce9c630049f889de6cbcce.jpg",
+            "GIVE": "https://i.pinimg.com/736x/52/54/ce/5254ce62dc30d2c0c94a3a4f56656a8f.jpg",
+            "FAST": "https://i.pinimg.com/1200x/fb/a9/53/fba953350572e4d23463d37b95f81c3c.jpg"
+        }
         skill = st.session_state.selected_skill
         st.subheader(f"📖 Skill Manual: {skill}")
         if skill in SKILL_IMAGES:
