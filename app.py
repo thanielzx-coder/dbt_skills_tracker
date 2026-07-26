@@ -12,22 +12,34 @@ import io
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
 # ==========================================
-# MOBILE-NATIVE AUTO-SCROLL TO TOP MECHANISM
+# 1. RELIABLE MOBILE SCROLL TO TOP ANCHOR
 # ==========================================
-# Injects an anchor element + native CSS smooth-scroll instruction targeting the main app container
 st.markdown(
     """
-    <div id="top_page_anchor"></div>
+    <div id="top_anchor"></div>
     <style>
         html, body, [data-testid="stAppViewContainer"] {
             scroll-behavior: auto !important;
         }
     </style>
     <script>
-        var anchor = parent.document.getElementById('top_page_anchor');
-        if (anchor) {
-            anchor.scrollIntoView({behavior: 'instant', block: 'start'});
+        function forceScrollTop() {
+            try {
+                var container = window.parent.document.querySelector('[data-testid="stAppViewContainer"]') || window.parent.document.querySelector('section.main');
+                if (container) {
+                    container.scrollTop = 0;
+                }
+                var anchor = window.parent.document.getElementById('top_anchor');
+                if (anchor) {
+                    anchor.scrollIntoView({behavior: 'instant', block: 'start'});
+                }
+                window.parent.scrollTo(0, 0);
+            } catch(e) {}
         }
+        forceScrollTop();
+        setTimeout(forceScrollTop, 50);
+        setTimeout(forceScrollTop, 150);
+        setTimeout(forceScrollTop, 300);
     </script>
     """,
     unsafe_allow_html=True
@@ -82,7 +94,7 @@ if os.path.exists(LOG_FILE):
             help="Saves your current private log file to your device."
         )
 
-# 2. IMPORT: Mobile-Optimized File Processor
+# 2. IMPORT: Mobile-Robust Parsing Engine
 uploaded_backup = st.sidebar.file_uploader(
     "Import a backup file:",
     type=["csv", "txt"],
@@ -94,14 +106,13 @@ if uploaded_backup is not None:
     if "import_processed_key" not in st.session_state:
         st.session_state.import_processed_key = None
 
-    # Compare uploaded file identifier to prevent execution loops on mobile
     current_file_id = f"{uploaded_backup.name}_{uploaded_backup.size}"
 
     if st.session_state.import_processed_key != current_file_id:
         try:
             st.cache_data.clear()
 
-            # Read bytes and decode cleanly across iOS/Android buffers
+            # Read and sanitize bytes for mobile compatibility
             raw_bytes = uploaded_backup.getvalue()
             decoded_text = raw_bytes.decode('utf-8-sig', errors='replace')
 
@@ -111,15 +122,27 @@ if uploaded_backup is not None:
             required_columns = ["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced",
                                 "Notes/Practice Text"]
 
-            if all(col in imported_df.columns for col in required_columns):
+            # Match columns case-insensitively for mobile browsers
+            matched_cols = []
+            for req in required_columns:
+                for col in imported_df.columns:
+                    if col.lower().strip() == req.lower().strip():
+                        matched_cols.append((req, col))
+                        break
+
+            if len(matched_cols) == len(required_columns):
+                # Standardize column header naming
+                rename_dict = {orig: target for target, orig in matched_cols}
+                imported_df = imported_df.rename(columns=rename_dict)
                 final_df = imported_df[required_columns]
                 final_df.to_csv(LOG_FILE, index=False)
+
                 st.session_state.import_processed_key = current_file_id
                 st.sidebar.success("🎉 Backup data imported successfully!")
-                time.sleep(0.5)
+                time.sleep(0.3)
                 st.rerun()
             else:
-                st.sidebar.error("❌ Invalid backup file format. Column mismatch detected.")
+                st.sidebar.error("❌ Column layout mismatch. Ensure file has valid headers.")
         except Exception as e:
             st.sidebar.error(f"❌ Failed to parse backup file: {str(e)}")
 
@@ -548,7 +571,7 @@ if app_mode == "🎯 Practice Skills":
             st.markdown("""
             * **T**emperature (Splash cold water on face)
             * **I**ntense Exercise (Do jumping jacks or run in place)
-            * **P**paced Breathing (Breathe in for 4, out for 6)
+            * **P**aced Breathing (Breathe in for 4, out for 6)
             * **P**aired Muscle Relaxation (Tense a muscle group, then release)
             """)
             selected_tipp = st.selectbox("Which TIPP action did you perform?",
@@ -915,7 +938,7 @@ if app_mode == "🎯 Practice Skills":
     elif st.session_state.page == "Skill_Detail":
         skill = st.session_state.selected_skill
 
-        # 1. Reverse map the skill to its category to ensure the header is always correct
+        # 1. Reverse map the skill to its category
         skill_to_cat = {
             "Wise Mind": "Mindfulness & Foundations",
             "What & How skills": "Mindfulness & Foundations",
@@ -948,7 +971,7 @@ if app_mode == "🎯 Practice Skills":
         current_cat = skill_to_cat.get(skill, "Skills Library")
         st.session_state.selected_category = current_cat
 
-        # 2. Build top category header layout
+        # 2. Top category header layout
         col_c1, col_c2 = st.columns([4, 1])
         with col_c1:
             st.title(f"🗂️ Category Index: {current_cat}")
