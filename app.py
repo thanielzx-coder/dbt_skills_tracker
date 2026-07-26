@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 from datetime import datetime, timedelta
 import os
@@ -11,39 +12,15 @@ import io
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
-# ==========================================
-# 1. RELIABLE MOBILE SCROLL TO TOP ANCHOR
-# ==========================================
-st.markdown(
-    """
-    <div id="top_anchor"></div>
-    <style>
-        html, body, [data-testid="stAppViewContainer"] {
-            scroll-behavior: auto !important;
-        }
-    </style>
-    <script>
-        function forceScrollTop() {
-            try {
-                var container = window.parent.document.querySelector('[data-testid="stAppViewContainer"]') || window.parent.document.querySelector('section.main');
-                if (container) {
-                    container.scrollTop = 0;
-                }
-                var anchor = window.parent.document.getElementById('top_anchor');
-                if (anchor) {
-                    anchor.scrollIntoView({behavior: 'instant', block: 'start'});
-                }
-                window.parent.scrollTo(0, 0);
-            } catch(e) {}
-        }
-        forceScrollTop();
-        setTimeout(forceScrollTop, 50);
-        setTimeout(forceScrollTop, 150);
-        setTimeout(forceScrollTop, 300);
-    </script>
-    """,
-    unsafe_allow_html=True
-)
+
+# Helper function to force browser memory sync if running in Stlite/Pyodide
+def sync_browser_storage():
+    try:
+        import js
+        js.window.stliteFileSystem.syncFS()
+    except Exception:
+        pass
+
 
 # Determine local system path
 if platform.system() == "Windows":
@@ -63,6 +40,7 @@ if not os.path.exists(LOG_FILE):
         "Timestamp", "Event Type", "Rating Before", "Rating After",
         "Skill Practiced", "Notes/Practice Text"
     ]).to_csv(LOG_FILE, index=False)
+    sync_browser_storage()
 
 # ==========================================
 # SIDEBAR NAVIGATION & DATA MANAGEMENT
@@ -94,57 +72,60 @@ if os.path.exists(LOG_FILE):
             help="Saves your current private log file to your device."
         )
 
-# 2. IMPORT: Mobile-Robust Parsing Engine
+# 2. IMPORT: Mobile-Optimized File Processor with Explicit Action Button
 uploaded_backup = st.sidebar.file_uploader(
     "Import a backup file:",
     type=["csv", "txt"],
     key="mobile_csv_uploader",
-    help="Upload a previously exported CSV file to restore your logs."
+    help="Select a CSV backup file from your phone files."
 )
 
 if uploaded_backup is not None:
-    if "import_processed_key" not in st.session_state:
-        st.session_state.import_processed_key = None
-
-    current_file_id = f"{uploaded_backup.name}_{uploaded_backup.size}"
-
-    if st.session_state.import_processed_key != current_file_id:
+    if st.sidebar.button("📲 Load & Restore Backup", use_container_width=True):
         try:
             st.cache_data.clear()
 
-            # Read and sanitize bytes for mobile compatibility
+            # Read raw bytes and attempt decoding with fallbacks for mobile browsers
             raw_bytes = uploaded_backup.getvalue()
-            decoded_text = raw_bytes.decode('utf-8-sig', errors='replace')
+            decoded_text = None
 
-            imported_df = pd.read_csv(io.StringIO(decoded_text))
-            imported_df.columns = imported_df.columns.astype(str).str.strip()
+            for encoding in ['utf-8-sig', 'utf-8', 'latin-1', 'cp1252']:
+                try:
+                    decoded_text = raw_bytes.decode(encoding)
+                    break
+                except Exception:
+                    continue
 
-            required_columns = ["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced",
-                                "Notes/Practice Text"]
+            if decoded_text:
+                imported_df = pd.read_csv(io.StringIO(decoded_text))
+                imported_df.columns = imported_df.columns.astype(str).str.strip()
 
-            # Match columns case-insensitively for mobile browsers
-            matched_cols = []
-            for req in required_columns:
-                for col in imported_df.columns:
-                    if col.lower().strip() == req.lower().strip():
-                        matched_cols.append((req, col))
-                        break
+                required_columns = ["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced",
+                                    "Notes/Practice Text"]
 
-            if len(matched_cols) == len(required_columns):
-                # Standardize column header naming
-                rename_dict = {orig: target for target, orig in matched_cols}
-                imported_df = imported_df.rename(columns=rename_dict)
-                final_df = imported_df[required_columns]
-                final_df.to_csv(LOG_FILE, index=False)
+                # Case-insensitive column matching
+                matched_cols = {}
+                for req in required_columns:
+                    for col in imported_df.columns:
+                        if col.lower().strip() == req.lower().strip():
+                            matched_cols[col] = req
+                            break
 
-                st.session_state.import_processed_key = current_file_id
-                st.sidebar.success("🎉 Backup data imported successfully!")
-                time.sleep(0.3)
-                st.rerun()
+                if len(matched_cols) == len(required_columns):
+                    final_df = imported_df[list(matched_cols.keys())].rename(columns=matched_cols)
+                    final_df = final_df[required_columns]
+                    final_df.to_csv(LOG_FILE, index=False)
+                    sync_browser_storage()
+
+                    st.sidebar.success("🎉 Backup restored successfully!")
+                    time.sleep(0.5)
+                    st.rerun()
+                else:
+                    st.sidebar.error("❌ Column mismatch. Ensure headers match the exported CSV.")
             else:
-                st.sidebar.error("❌ Column layout mismatch. Ensure file has valid headers.")
+                st.sidebar.error("❌ Could not read file encoding.")
         except Exception as e:
-            st.sidebar.error(f"❌ Failed to parse backup file: {str(e)}")
+            st.sidebar.error(f"❌ Error restoring file: {str(e)}")
 
 # ------------------------------------------
 # WEEK SCOPE CONFIGURATIONS
@@ -200,6 +181,7 @@ def log_event(event_type, rating_before=None, rating_after=None, skill_used=None
     new_df = pd.DataFrame([new_entry])
     updated_df = pd.concat([existing_df, new_df], ignore_index=True)
     updated_df.to_csv(LOG_FILE, index=False)
+    sync_browser_storage()
 
     csv_bytes = updated_df.to_csv(index=False).encode('utf-8')
     st.session_state["latest_export_bytes"] = csv_bytes
@@ -967,7 +949,6 @@ if app_mode == "🎯 Practice Skills":
             "FAST": "Interpersonal Effectiveness"
         }
 
-        # Get current category and update state
         current_cat = skill_to_cat.get(skill, "Skills Library")
         st.session_state.selected_category = current_cat
 
@@ -1267,6 +1248,7 @@ elif app_mode == "📖 Read & View Logs":
                                 master_df = pd.read_csv(LOG_FILE)
                                 master_df = master_df.drop(index)
                                 master_df.to_csv(LOG_FILE, index=False)
+                                sync_browser_storage()
                                 st.success("Entry removed successfully!")
                                 st.rerun()
                 else:
@@ -1314,6 +1296,7 @@ elif app_mode == "📖 Read & View Logs":
                         master_df = pd.read_csv(LOG_FILE)
                         master_df = master_df.drop(clicked_id)
                         master_df.to_csv(LOG_FILE, index=False)
+                        sync_browser_storage()
                         st.success("Entry successfully removed from calendar database!")
                         st.rerun()
 
@@ -1322,6 +1305,7 @@ elif app_mode == "📖 Read & View Logs":
                 st.dataframe(df.drop(columns=["parsed_date"], errors='ignore'), use_container_width=True)
                 if st.button("Clear All History Database File"):
                     os.remove(LOG_FILE)
+                    sync_browser_storage()
                     st.rerun()
         else:
             st.info("Your logbook is currently empty. Start practicing to populate your logs!")
@@ -1389,10 +1373,43 @@ elif app_mode == "🗓️ Weekly Diary Card":
     with col_btn1:
         if st.button("💾 Save Diary Card Progress", use_container_width=True):
             edited_df.to_csv(DIARY_FILE)
+            sync_browser_storage()
             st.success("Diary card configurations saved successfully!")
             st.rerun()
     with col_btn2:
         if st.button("🧹 Reset/Clear Week", use_container_width=True):
             pd.DataFrame(False, index=TRACKED_SKILLS, columns=DAYS_OF_WEEK).to_csv(DIARY_FILE)
+            sync_browser_storage()
             st.warning("Diary card reset back to empty configuration state.")
             st.rerun()
+
+# ==========================================
+# GLOBAL MOBILE SCROLL-TO-TOP EXECUTION
+# ==========================================
+# Executed at the very end of the script when all DOM elements have finished rendering
+components.html(
+    """
+    <script>
+        function executeScrollTop() {
+            try {
+                var p = window.parent;
+                var doc = p.document;
+
+                // Target Streamlit main viewport containers across web/mobile
+                var mainView = doc.querySelector('[data-testid="stAppViewContainer"]') || doc.querySelector('section.main');
+                if (mainView) {
+                    mainView.scrollTop = 0;
+                }
+                doc.body.scrollTop = 0;
+                doc.documentElement.scrollTop = 0;
+                p.scrollTo(0, 0);
+            } catch(e) {}
+        }
+        executeScrollTop();
+        setTimeout(executeScrollTop, 100);
+        setTimeout(executeScrollTop, 300);
+    </script>
+    """,
+    height=0,
+    width=0,
+)
