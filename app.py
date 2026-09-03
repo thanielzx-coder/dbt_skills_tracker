@@ -18,48 +18,76 @@ st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centere
 # ==========================================
 # 1. NATIVE PARENT-DOM MOBILE SCROLL-TO-TOP
 # ==========================================
+# ==========================================
+# 1. ROBUST MOBILE CHROME SCROLL-TO-TOP
+# ==========================================
 st.html(
     """
-    <div id="page-top-anchor" style="position: absolute; top: 0; left: 0; height: 1px; width: 1px; pointer-events: none;"></div>
+    <div id="top-marker" style="position:absolute; top:0; left:0; width:1px; height:1px; opacity:0; pointer-events:none;"></div>
     <script>
-        function executeScrollTop() {
-            try {
-                // Method 1: Target the dummy anchor
-                const anchor = window.parent.document.getElementById('page-top-anchor') || document.getElementById('page-top-anchor');
-                if (anchor) {
-                    anchor.scrollIntoView({ behavior: 'instant', block: 'start' });
-                }
-
-                // Method 2: Reset main scrolling viewport containers across Safari/Chrome
-                const rootDoc = window.parent.document || document;
-                const scrollableNodes = [
-                    rootDoc.querySelector('[data-testid="stAppViewContainer"]'),
-                    rootDoc.querySelector('[data-testid="stMain"]'),
-                    rootDoc.querySelector('section.main'),
-                    window.parent,
-                    window,
-                    rootDoc.body,
-                    rootDoc.documentElement
-                ];
-
-                scrollableNodes.forEach(node => {
-                    if (node) {
-                        if (typeof node.scrollTop !== 'undefined') node.scrollTop = 0;
-                        if (typeof node.scrollTo === 'function') node.scrollTo(0, 0);
-                    }
-                });
-            } catch (err) {
-                console.debug("Scroll execution trapped:", err);
+        (function() {
+            // Prevent Chrome from forcibly restoring the previous scroll position on rerun
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
             }
-        }
 
-        // Run immediately, then staggered after mobile layout rendering settles
-        executeScrollTop();
-        [50, 150, 400, 800].forEach(delay => setTimeout(executeScrollTop, delay));
+            function hardScroll() {
+                try {
+                    // 1. Blur active element so Chrome doesn't scroll down to keep button in view
+                    if (document.activeElement && document.activeElement !== document.body) {
+                        document.activeElement.blur();
+                    }
+
+                    // 2. Target the top anchor
+                    const marker = document.getElementById('top-marker');
+                    if (marker) {
+                        marker.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'nearest' });
+                    }
+
+                    // 3. Force scroll on all possible scrolling viewports in Streamlit
+                    const viewports = [
+                        document.querySelector('[data-testid="stAppViewContainer"]'),
+                        document.querySelector('[data-testid="stMain"]'),
+                        document.querySelector('section.main'),
+                        document.documentElement,
+                        document.body,
+                        window
+                    ];
+
+                    viewports.forEach(el => {
+                        if (el) {
+                            if (typeof el.scrollTop !== 'undefined') el.scrollTop = 0;
+                            if (typeof el.scrollTo === 'function') {
+                                try { el.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch(e) { el.scrollTo(0, 0); }
+                            }
+                        }
+                    });
+                } catch(e) {
+                    console.error(e);
+                }
+            }
+
+            // Fire across Chrome rendering phases
+            hardScroll();
+            requestAnimationFrame(hardScroll);
+            setTimeout(hardScroll, 50);
+            setTimeout(hardScroll, 150);
+            setTimeout(hardScroll, 350);
+            setTimeout(hardScroll, 700);
+
+            // Re-fire if Streamlit finishes injecting DOM elements late
+            const appContainer = document.querySelector('[data-testid="stAppViewContainer"]') || document.body;
+            let counter = 0;
+            const observer = new MutationObserver(() => {
+                hardScroll();
+                counter++;
+                if (counter > 4) observer.disconnect();
+            });
+            observer.observe(appContainer, { childList: true, subtree: true });
+        })();
     </script>
     """
 )
-
 
 # Helper function to force browser memory sync if running in Stlite/Pyodide
 def sync_browser_storage():
@@ -121,75 +149,79 @@ if os.path.exists(LOG_FILE):
         )
 
 # 2. IMPORT: Direct Stream Auto-Processor (No extra button required)
-import io  # Ensure 'import io' is placed at the top of your imports
+import io  # Ensure this is placed at the top of your script
 
-# 2. IMPORT: Direct Stream Auto-Processor (Mobile-Optimized)
+# 2. IMPORT: Mobile-unlocked file uploader (omitting 'type' fixes greyed-out mobile files)
 uploaded_backup = st.sidebar.file_uploader(
     "Import a backup file:",
-    type=["csv", "txt", "tsv"],
     key="mobile_csv_uploader",
     help="Select a CSV backup file from your phone files."
 )
 
 if uploaded_backup is not None:
-    if "last_imported_signature" not in st.session_state:
-        st.session_state.last_imported_signature = None
+    # Validate extension manually in Python
+    allowed_exts = (".csv", ".txt")
+    if not uploaded_backup.name.lower().endswith(allowed_exts):
+        st.sidebar.error("❌ Please select a valid .csv file.")
+    else:
+        if "last_imported_signature" not in st.session_state:
+            st.session_state.last_imported_signature = None
 
-    file_signature = f"{uploaded_backup.name}_{uploaded_backup.size}"
+        file_signature = f"{uploaded_backup.name}_{uploaded_backup.size}"
 
-    if st.session_state.last_imported_signature != file_signature:
-        try:
-            st.cache_data.clear()
+        if st.session_state.last_imported_signature != file_signature:
+            try:
+                st.cache_data.clear()
 
-            # Read raw byte buffer directly to bypass mobile stream lock & MIME issues
-            raw_bytes = uploaded_backup.getvalue()
+                # Read raw bytes buffer directly
+                raw_bytes = uploaded_backup.getvalue()
+                if not raw_bytes:
+                    raise ValueError("The selected file is empty.")
 
-            imported_df = None
-            encodings = ["utf-8", "utf-8-sig", "latin-1", "cp1252"]
-            for enc in encodings:
-                try:
-                    imported_df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc)
-                    break
-                except (UnicodeDecodeError, pd.errors.ParserError):
-                    continue
-
-            if imported_df is None:
-                raise ValueError("Could not decode file with supported encodings (UTF-8, Latin-1).")
-
-            # Clean trailing spaces from headers
-            imported_df.columns = imported_df.columns.astype(str).str.strip()
-
-            required_columns = [
-                "Timestamp", "Event Type", "Rating Before", "Rating After",
-                "Skill Practiced", "Notes/Practice Text"
-            ]
-
-            # Case-insensitive header matching
-            matched_cols = {}
-            for req in required_columns:
-                for col in imported_df.columns:
-                    if col.lower().strip() == req.lower().strip():
-                        matched_cols[col] = req
+                # Try standard and mobile encodings (including Excel/Numbers BOMs)
+                imported_df = None
+                for enc in ["utf-8", "utf-8-sig", "latin-1", "cp1252"]:
+                    try:
+                        imported_df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc)
                         break
+                    except (UnicodeDecodeError, pd.errors.ParserError):
+                        continue
 
-            if len(matched_cols) == len(required_columns):
-                final_df = imported_df[list(matched_cols.keys())].rename(columns=matched_cols)
-                final_df = final_df[required_columns]
+                if imported_df is None:
+                    raise ValueError("Could not decode file. Ensure it is a valid plain text CSV.")
 
-                # Write cleanly to disk and force stlite/Pyodide sync
-                final_df.to_csv(LOG_FILE, index=False)
-                sync_browser_storage()
+                # Strip whitespace from column names
+                imported_df.columns = imported_df.columns.astype(str).str.strip()
 
-                st.session_state.last_imported_signature = file_signature
-                st.sidebar.success("🎉 Backup restored successfully!")
-                time.sleep(0.3)
-                st.rerun()
-            else:
-                missing = [r for r in required_columns if r not in matched_cols.values()]
-                st.sidebar.error(f"❌ Missing required columns: {', '.join(missing)}")
-        except Exception as e:
-            st.sidebar.error(f"❌ Could not import file: {str(e)}")
+                required_columns = [
+                    "Timestamp", "Event Type", "Rating Before", "Rating After",
+                    "Skill Practiced", "Notes/Practice Text"
+                ]
 
+                # Case-insensitive header matching
+                matched_cols = {}
+                for req in required_columns:
+                    for col in imported_df.columns:
+                        if col.lower().strip() == req.lower().strip():
+                            matched_cols[col] = req
+                            break
+
+                if len(matched_cols) == len(required_columns):
+                    final_df = imported_df[list(matched_cols.keys())].rename(columns=matched_cols)
+                    final_df = final_df[required_columns]
+                    final_df.to_csv(LOG_FILE, index=False)
+                    sync_browser_storage()
+
+                    st.session_state.last_imported_signature = file_signature
+                    st.sidebar.success("🎉 Backup restored successfully!")
+                    time.sleep(0.3)
+                    st.rerun()
+                else:
+                    missing = [r for r in required_columns if r not in matched_cols.values()]
+                    st.sidebar.error(f"❌ Missing headers: {', '.join(missing)}")
+
+            except Exception as e:
+                st.sidebar.error(f"❌ Could not import file: {str(e)}")
 # ------------------------------------------
 # WEEK SCOPE CONFIGURATIONS
 # ------------------------------------------
