@@ -11,80 +11,61 @@ import platform
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
 # ==========================================
-# 1. NATIVE PARENT-DOM MOBILE SCROLL-TO-TOP
+# 1. BULLETPROOF MOBILE SCROLL ENGINE
 # ==========================================
-# st.html places JS directly in the main page (not an iframe), overcoming mobile WebKit restrictions.
-# Timers ensure the page stays at the top even after external Pinterest images finish loading.
-# ==========================================
-# 1. NATIVE PARENT-DOM MOBILE SCROLL-TO-TOP
-# ==========================================
-# ==========================================
-# 1. ROBUST MOBILE CHROME SCROLL-TO-TOP
-# ==========================================
+# Insert a zero-height anchor at the very top of Streamlit's markdown body
+st.markdown('<div id="top" style="position: absolute; top: 0; left: 0; height: 0; width: 0;"></div>', unsafe_allow_html=True)
+
 st.html(
     """
-    <div id="top-marker" style="position:absolute; top:0; left:0; width:1px; height:1px; opacity:0; pointer-events:none;"></div>
     <script>
-        (function() {
-            // Prevent Chrome from forcibly restoring the previous scroll position on rerun
-            if ('scrollRestoration' in history) {
-                history.scrollRestoration = 'manual';
+    (function() {
+        // 1. Kill browser-level position restoration
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+
+        function forceScrollTop() {
+            // Remove focus from any button clicked so mobile Chrome doesn't stay anchored to it
+            if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
+                document.activeElement.blur();
             }
 
-            function hardScroll() {
-                try {
-                    // 1. Blur active element so Chrome doesn't scroll down to keep button in view
-                    if (document.activeElement && document.activeElement !== document.body) {
-                        document.activeElement.blur();
-                    }
-
-                    // 2. Target the top anchor
-                    const marker = document.getElementById('top-marker');
-                    if (marker) {
-                        marker.scrollIntoView({ behavior: 'instant', block: 'start', inline: 'nearest' });
-                    }
-
-                    // 3. Force scroll on all possible scrolling viewports in Streamlit
-                    const viewports = [
-                        document.querySelector('[data-testid="stAppViewContainer"]'),
-                        document.querySelector('[data-testid="stMain"]'),
-                        document.querySelector('section.main'),
-                        document.documentElement,
-                        document.body,
-                        window
-                    ];
-
-                    viewports.forEach(el => {
-                        if (el) {
-                            if (typeof el.scrollTop !== 'undefined') el.scrollTop = 0;
-                            if (typeof el.scrollTo === 'function') {
-                                try { el.scrollTo({ top: 0, left: 0, behavior: 'instant' }); } catch(e) { el.scrollTo(0, 0); }
-                            }
-                        }
-                    });
-                } catch(e) {
-                    console.error(e);
-                }
+            // A: Native Browser Location Hash (Forces Chrome to jump via hardware render)
+            if (window.location.hash !== '#top') {
+                window.location.hash = 'top';
+            } else {
+                window.location.hash = '';
+                window.location.hash = 'top';
             }
 
-            // Fire across Chrome rendering phases
-            hardScroll();
-            requestAnimationFrame(hardScroll);
-            setTimeout(hardScroll, 50);
-            setTimeout(hardScroll, 150);
-            setTimeout(hardScroll, 350);
-            setTimeout(hardScroll, 700);
+            // B: Exhaustive search for all Streamlit internal scrollable viewports
+            const selectors = [
+                '[data-testid="stAppViewContainer"]',
+                '[data-testid="stMain"]',
+                '[data-testid="stAppViewBlockContainer"]',
+                'section.main',
+                '.main'
+            ];
 
-            // Re-fire if Streamlit finishes injecting DOM elements late
-            const appContainer = document.querySelector('[data-testid="stAppViewContainer"]') || document.body;
-            let counter = 0;
-            const observer = new MutationObserver(() => {
-                hardScroll();
-                counter++;
-                if (counter > 4) observer.disconnect();
+            selectors.forEach(sel => {
+                document.querySelectorAll(sel).forEach(el => {
+                    if (el) {
+                        el.scrollTop = 0;
+                        if (el.scrollTo) el.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+                    }
+                });
             });
-            observer.observe(appContainer, { childList: true, subtree: true });
-        })();
+
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            document.documentElement.scrollTop = 0;
+        }
+
+        // Run immediately and repeat through standard mobile repaint cycles
+        forceScrollTop();
+        [30, 100, 250, 600, 1000].forEach(ms => setTimeout(forceScrollTop, ms));
+    })();
     </script>
     """
 )
@@ -148,80 +129,84 @@ if os.path.exists(LOG_FILE):
             help="Saves your current private log file to your device."
         )
 
-# 2. IMPORT: Direct Stream Auto-Processor (No extra button required)
-import io  # Ensure this is placed at the top of your script
+# ==========================================
+# 2. IMPORT: DUAL-MODE MOBILE RESTORER
+# ==========================================
+import io
 
-# 2. IMPORT: Mobile-unlocked file uploader (omitting 'type' fixes greyed-out mobile files)
-uploaded_backup = st.sidebar.file_uploader(
-    "Import a backup file:",
-    key="mobile_csv_uploader",
-    help="Select a CSV backup file from your phone files."
-)
+import_tab1, import_tab2 = st.sidebar.tabs(["📁 File Upload", "📋 Paste Raw Text"])
 
-if uploaded_backup is not None:
-    # Validate extension manually in Python
-    allowed_exts = (".csv", ".txt")
-    if not uploaded_backup.name.lower().endswith(allowed_exts):
-        st.sidebar.error("❌ Please select a valid .csv file.")
-    else:
-        if "last_imported_signature" not in st.session_state:
-            st.session_state.last_imported_signature = None
+raw_csv_content = None
+import_source_id = None
 
-        file_signature = f"{uploaded_backup.name}_{uploaded_backup.size}"
+with import_tab1:
+    uploaded_backup = st.file_uploader(
+        "Select CSV Backup:",
+        # Explicitly accept wildcard text and octet streams to stop mobile pickers from greying files out
+        type=None,
+        key="mobile_csv_uploader_v2",
+        help="If greyed out on Android, tap the three dots in your phone's file picker and choose 'Show internal storage' or open from 'Downloads'."
+    )
+    if uploaded_backup is not None:
+        try:
+            raw_csv_content = uploaded_backup.getvalue().decode("utf-8-sig", errors="replace")
+            import_source_id = f"file_{uploaded_backup.name}_{uploaded_backup.size}"
+        except Exception as e:
+            st.sidebar.error(f"Read error: {e}")
 
-        if st.session_state.last_imported_signature != file_signature:
-            try:
-                st.cache_data.clear()
+with import_tab2:
+    st.caption("If your phone greyed out the file, open the CSV on your phone, select all, copy, and paste here:")
+    pasted_text = st.text_area("Paste CSV Text:", height=100, key="pasted_csv_text")
+    if st.button("📥 Import from Pasted Text", use_container_width=True):
+        if pasted_text.strip():
+            raw_csv_content = pasted_text.strip()
+            import_source_id = f"pasted_{len(raw_csv_content)}_{hash(raw_csv_content)}"
+        else:
+            st.sidebar.warning("Paste box is empty.")
 
-                # Read raw bytes buffer directly
-                raw_bytes = uploaded_backup.getvalue()
-                if not raw_bytes:
-                    raise ValueError("The selected file is empty.")
+# Unified CSV Processor
+if raw_csv_content and import_source_id:
+    if "last_imported_signature" not in st.session_state:
+        st.session_state.last_imported_signature = None
 
-                # Try standard and mobile encodings (including Excel/Numbers BOMs)
-                imported_df = None
-                for enc in ["utf-8", "utf-8-sig", "latin-1", "cp1252"]:
-                    try:
-                        imported_df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc)
+    if st.session_state.last_imported_signature != import_source_id:
+        try:
+            st.cache_data.clear()
+
+            # Read from string buffer
+            imported_df = pd.read_csv(io.StringIO(raw_csv_content))
+            imported_df.columns = imported_df.columns.astype(str).str.strip()
+
+            required_columns = [
+                "Timestamp", "Event Type", "Rating Before", "Rating After",
+                "Skill Practiced", "Notes/Practice Text"
+            ]
+
+            # Case-insensitive header alignment
+            matched_cols = {}
+            for req in required_columns:
+                for col in imported_df.columns:
+                    if col.lower().strip() == req.lower().strip():
+                        matched_cols[col] = req
                         break
-                    except (UnicodeDecodeError, pd.errors.ParserError):
-                        continue
 
-                if imported_df is None:
-                    raise ValueError("Could not decode file. Ensure it is a valid plain text CSV.")
+            if len(matched_cols) == len(required_columns):
+                final_df = imported_df[list(matched_cols.keys())].rename(columns=matched_cols)
+                final_df = final_df[required_columns]
 
-                # Strip whitespace from column names
-                imported_df.columns = imported_df.columns.astype(str).str.strip()
+                # Write to disk and force storage sync
+                final_df.to_csv(LOG_FILE, index=False)
+                sync_browser_storage()
 
-                required_columns = [
-                    "Timestamp", "Event Type", "Rating Before", "Rating After",
-                    "Skill Practiced", "Notes/Practice Text"
-                ]
-
-                # Case-insensitive header matching
-                matched_cols = {}
-                for req in required_columns:
-                    for col in imported_df.columns:
-                        if col.lower().strip() == req.lower().strip():
-                            matched_cols[col] = req
-                            break
-
-                if len(matched_cols) == len(required_columns):
-                    final_df = imported_df[list(matched_cols.keys())].rename(columns=matched_cols)
-                    final_df = final_df[required_columns]
-                    final_df.to_csv(LOG_FILE, index=False)
-                    sync_browser_storage()
-
-                    st.session_state.last_imported_signature = file_signature
-                    st.sidebar.success("🎉 Backup restored successfully!")
-                    time.sleep(0.3)
-                    st.rerun()
-                else:
-                    missing = [r for r in required_columns if r not in matched_cols.values()]
-                    st.sidebar.error(f"❌ Missing headers: {', '.join(missing)}")
-
-            except Exception as e:
-                st.sidebar.error(f"❌ Could not import file: {str(e)}")
+                st.session_state.last_imported_signature = import_source_id
+                st.sidebar.success("🎉 Backup restored successfully!")
+                time.sleep(0.3)
+                st.rerun()
+            else:
+                missing = [r for r in required_columns if r not in matched_cols.values()]
+                st.sidebar.error(f"❌ Header mismatch. Missing: {', '.join(missing)}")
+        except Exception as e:
+            st.sidebar.error(f"❌ Failed to parse data: {str(e)}")
 # ------------------------------------------
 # WEEK SCOPE CONFIGURATIONS
 # ------------------------------------------
