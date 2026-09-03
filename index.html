@@ -2,50 +2,65 @@
 <html>
   <head>
     <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>DBT Companion</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.73.0/build/stlite.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.58.0/build/stlite.css" />
     <style>
-      html, body, #root {
-        height: 100vh;
+      body, html, #root {
         margin: 0;
         padding: 0;
-        background-color: #FFFFFF;
+        height: 100%;
+        width: 100%;
+        overflow: hidden;
       }
     </style>
   </head>
   <body>
     <div id="root"></div>
-
-    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.73.0/build/stlite.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stlite/mountable@0.58.0/build/stlite.js"></script>
     <script>
-      stlite.mount({
-        requirements: ["pandas", "streamlit-calendar"],
-        entrypoint: "app.py",
-        mountPoints: {
-          "idb": {
-            mountPoint: "/home/pyodide/dbt_storage",
-            name: "dbt_storage"
-          }
-        },
-        files: {
-          "app.py": {
-            url: "app.py"
+      const imageNames = [
+        "wise_mind.jpg", "please.jpg", "stop.jpg", "tipp.gif",
+        "pros_cons.jpg", "distract.jpg", "improve.jpg", "self_soothe.jpg",
+        "validation.jpg", "radical_acceptance.jpg", "describing_emotion.jpg",
+        "check_the_facts.jpg", "opposite_action.jpg", "problem_solving.jpg",
+        "positive_experiences.jpg", "building_mastery.jpg", "cope_ahead.jpg",
+        "dearman.jpg", "give.jpg", "fast.jpg"
+      ];
+
+      async function initApp() {
+        const fileMounts = {};
+
+        // 1. Fetch and mount app.py
+        const appRes = await fetch("./app.py");
+        fileMounts["app.py"] = await appRes.text();
+
+        // 2. Fetch and mount each image binary
+        await Promise.all(
+          imageNames.map(async (name) => {
+            try {
+              const res = await fetch(`./assets/${name}`);
+              const buffer = await res.arrayBuffer();
+              fileMounts[`assets/${name}`] = new Uint8Array(buffer);
+            } catch (err) {
+              console.warn(`Could not preload asset: ${name}`, err);
+            }
+          })
+        );
+
+        // 3. Mount Stlite
+        stlite.mount(
+          {
+            requirements: ["pandas", "streamlit-calendar"],
+            entrypoint: "app.py",
+            files: fileMounts,
           },
-          ".streamlit/config.toml": `
-[theme]
-primaryColor = "#2563EB"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F3F4F6"
-textColor = "#1F2937"
-`
-        }
-      }, document.getElementById("root")).then((kernel) => {
-        // FORCES the browser to automatically save changes from Python back to your hard device storage
-        window.addEventListener("beforeunload", () => {
-          kernel.flushFiles();
-        });
-      });
+          document.getElementById("root")
+        );
+      }
+
+      initApp();
     </script>
   </body>
 </html>

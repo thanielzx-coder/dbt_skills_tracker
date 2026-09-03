@@ -15,38 +15,47 @@ st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centere
 # ==========================================
 # st.html places JS directly in the main page (not an iframe), overcoming mobile WebKit restrictions.
 # Timers ensure the page stays at the top even after external Pinterest images finish loading.
+# ==========================================
+# 1. NATIVE PARENT-DOM MOBILE SCROLL-TO-TOP
+# ==========================================
 st.html(
     """
+    <div id="page-top-anchor" style="position: absolute; top: 0; left: 0; height: 1px; width: 1px; pointer-events: none;"></div>
     <script>
-        function forceTopScroll() {
+        function executeScrollTop() {
             try {
-                // Target Streamlit main scroll containers
-                const containers = [
-                    document.querySelector('[data-testid="stAppViewContainer"]'),
-                    document.querySelector('[data-testid="stMain"]'),
-                    document.querySelector('section.main'),
+                // Method 1: Target the dummy anchor
+                const anchor = window.parent.document.getElementById('page-top-anchor') || document.getElementById('page-top-anchor');
+                if (anchor) {
+                    anchor.scrollIntoView({ behavior: 'instant', block: 'start' });
+                }
+
+                // Method 2: Reset main scrolling viewport containers across Safari/Chrome
+                const rootDoc = window.parent.document || document;
+                const scrollableNodes = [
+                    rootDoc.querySelector('[data-testid="stAppViewContainer"]'),
+                    rootDoc.querySelector('[data-testid="stMain"]'),
+                    rootDoc.querySelector('section.main'),
+                    window.parent,
                     window,
-                    document.body,
-                    document.documentElement
+                    rootDoc.body,
+                    rootDoc.documentElement
                 ];
 
-                containers.forEach(el => {
-                    if (el) {
-                        if (el.scrollTop !== undefined) el.scrollTop = 0;
-                        if (el.scrollTo) el.scrollTo(0, 0);
+                scrollableNodes.forEach(node => {
+                    if (node) {
+                        if (typeof node.scrollTop !== 'undefined') node.scrollTop = 0;
+                        if (typeof node.scrollTo === 'function') node.scrollTo(0, 0);
                     }
                 });
-            } catch (e) {
-                console.error(e);
+            } catch (err) {
+                console.debug("Scroll execution trapped:", err);
             }
         }
 
-        // Trigger immediately and staggered to combat async image rendering
-        forceTopScroll();
-        setTimeout(forceTopScroll, 50);
-        setTimeout(forceTopScroll, 200);
-        setTimeout(forceTopScroll, 600);
-        setTimeout(forceTopScroll, 1200);
+        // Run immediately, then staggered after mobile layout rendering settles
+        executeScrollTop();
+        [50, 150, 400, 800].forEach(delay => setTimeout(executeScrollTop, delay));
     </script>
     """
 )
@@ -112,9 +121,12 @@ if os.path.exists(LOG_FILE):
         )
 
 # 2. IMPORT: Direct Stream Auto-Processor (No extra button required)
+import io  # Ensure 'import io' is placed at the top of your imports
+
+# 2. IMPORT: Direct Stream Auto-Processor (Mobile-Optimized)
 uploaded_backup = st.sidebar.file_uploader(
     "Import a backup file:",
-    type=["csv", "txt"],
+    type=["csv", "txt", "tsv"],
     key="mobile_csv_uploader",
     help="Select a CSV backup file from your phone files."
 )
@@ -123,19 +135,34 @@ if uploaded_backup is not None:
     if "last_imported_signature" not in st.session_state:
         st.session_state.last_imported_signature = None
 
-    # Unique signature prevents infinite rerun loops on mobile
     file_signature = f"{uploaded_backup.name}_{uploaded_backup.size}"
 
     if st.session_state.last_imported_signature != file_signature:
         try:
             st.cache_data.clear()
 
-            # Read directly as raw stream (Works seamlessly on iOS Safari & Android)
-            imported_df = pd.read_csv(uploaded_backup)
+            # Read raw byte buffer directly to bypass mobile stream lock & MIME issues
+            raw_bytes = uploaded_backup.getvalue()
+
+            imported_df = None
+            encodings = ["utf-8", "utf-8-sig", "latin-1", "cp1252"]
+            for enc in encodings:
+                try:
+                    imported_df = pd.read_csv(io.BytesIO(raw_bytes), encoding=enc)
+                    break
+                except (UnicodeDecodeError, pd.errors.ParserError):
+                    continue
+
+            if imported_df is None:
+                raise ValueError("Could not decode file with supported encodings (UTF-8, Latin-1).")
+
+            # Clean trailing spaces from headers
             imported_df.columns = imported_df.columns.astype(str).str.strip()
 
-            required_columns = ["Timestamp", "Event Type", "Rating Before", "Rating After", "Skill Practiced",
-                                "Notes/Practice Text"]
+            required_columns = [
+                "Timestamp", "Event Type", "Rating Before", "Rating After",
+                "Skill Practiced", "Notes/Practice Text"
+            ]
 
             # Case-insensitive header matching
             matched_cols = {}
@@ -148,16 +175,20 @@ if uploaded_backup is not None:
             if len(matched_cols) == len(required_columns):
                 final_df = imported_df[list(matched_cols.keys())].rename(columns=matched_cols)
                 final_df = final_df[required_columns]
+
+                # Write cleanly to disk and force stlite/Pyodide sync
                 final_df.to_csv(LOG_FILE, index=False)
                 sync_browser_storage()
 
                 st.session_state.last_imported_signature = file_signature
                 st.sidebar.success("🎉 Backup restored successfully!")
+                time.sleep(0.3)
                 st.rerun()
             else:
-                st.sidebar.error("❌ Column mismatch. Ensure headers match the exported CSV.")
+                missing = [r for r in required_columns if r not in matched_cols.values()]
+                st.sidebar.error(f"❌ Missing required columns: {', '.join(missing)}")
         except Exception as e:
-            st.sidebar.error(f"❌ Could not read CSV file: {str(e)}")
+            st.sidebar.error(f"❌ Could not import file: {str(e)}")
 
 # ------------------------------------------
 # WEEK SCOPE CONFIGURATIONS
@@ -999,28 +1030,28 @@ if app_mode == "🎯 Practice Skills":
         st.write("---")
 
         SKILL_IMAGES = {
-            "Wise Mind": "https://i.pinimg.com/736x/dc/5b/89/dc5b8956caf323d153ea75de067b068c.jpg",
-            "PLEASE": "https://i.pinimg.com/736x/5f/7f/70/5f7f70b54ee07e1a90f5a10cc7e66474.jpg",
-            "STOP Skill": "https://i.pinimg.com/1200x/e9/2d/44/e92d44fb36fb9fc5a891304261c492a0.jpg",
-            "STOP": "https://i.pinimg.com/1200x/e9/2d/44/e92d44fb36fb9fc5a891304261c492a0.jpg",
-            "TIPP Skill": "https://i.pinimg.com/originals/c5/02/49/c50249b2d7158a5ebe574c3e8403e01a.gif",
-            "TIPP": "https://i.pinimg.com/originals/c5/02/49/c50249b2d7158a5ebe574c3e8403e01a.gif",
-            "Pros & Cons": "https://i.pinimg.com/736x/fd/db/8e/fddb8e4b0bbc15ee221af78731f9f586.jpg",
-            "Distract": "https://i.pinimg.com/736x/07/2b/d5/072bd5ff5c9977f7583bc700d6af7267.jpg",
-            "IMPROVE": "https://i.pinimg.com/1200x/df/1b/9d/df1b9d97fbf879675eee97702db31d20.jpg",
-            "Self-Soothe": "https://i.pinimg.com/736x/e0/52/9f/e0529f122b60172ca5bcb66e53f35e79.jpg",
-            "Validation": "https://i.pinimg.com/736x/35/ec/c0/35ecc0786e1a2b63315ddda8834049bc.jpg",
-            "Radical Acceptance": "https://i.pinimg.com/1200x/d5/c9/ca/d5c9cad9cf5e058ae743aaaa0e90ad10.jpg",
-            "Describing the Emotion": "https://i.pinimg.com/736x/84/17/fa/8417fa15a322a8d99d6f22f279b7717a.jpg",
-            "Check the Facts": "https://i.pinimg.com/736x/4f/04/44/4f0444afb8df95b046be6c694237f086.jpg",
-            "Opposite Action": "https://i.pinimg.com/736x/2c/fa/52/2cfa521ce5ab2b2ef794feabd4da0e19.jpg",
-            "Problem-solving": "https://i.pinimg.com/1200x/ca/39/13/ca3913a712104ec2f352ece16d741130.jpg",
-            "Positive Experiences": "https://i.pinimg.com/1200x/52/eb/3e/52eb3e0472317f713eb128bf43e7ca73.jpg",
-            "Building Mastery": "https://i.pinimg.com/736x/d9/e1/88/d9e188974dc1d122f49176f491d2438f.jpg",
-            "Cope Ahead": "https://i.pinimg.com/736x/c1/eb/b6/c1ebb6ea1659665d778bb71190b6e031.jpg",
-            "DEARMAN": "https://i.pinimg.com/736x/29/6e/e6/296ee6fa43ce9c630049f889de6cbcce.jpg",
-            "GIVE": "https://i.pinimg.com/736x/52/54/ce/5254ce62dc30d2c0c94a3a4f56656a8f.jpg",
-            "FAST": "https://i.pinimg.com/1200x/fb/a9/53/fba953350572e4d23463d37b95f81c3c.jpg"
+            "Wise Mind": "assets/wise_mind.jpg",
+            "PLEASE": "assets/please.jpg",
+            "STOP Skill": "assets/stop.jpg",
+            "STOP": "assets/stop.jpg",
+            "TIPP Skill": "assets/tipp.gif",
+            "TIPP": "assets/tipp.gif",
+            "Pros & Cons": "assets/pros_cons.jpg",
+            "Distract": "assets/distract.jpg",
+            "IMPROVE": "assets/improve.jpg",
+            "Self-Soothe": "assets/self_soothe.jpg",
+            "Validation": "assets/validation.jpg",
+            "Radical Acceptance": "assets/radical_acceptance.jpg",
+            "Describing the Emotion": "assets/describing_emotion.jpg",
+            "Check the Facts": "assets/check_the_facts.jpg",
+            "Opposite Action": "assets/opposite_action.jpg",
+            "Problem-solving": "assets/problem_solving.jpg",
+            "Positive Experiences": "assets/positive_experiences.jpg",
+            "Building Mastery": "assets/building_mastery.jpg",
+            "Cope Ahead": "assets/cope_ahead.jpg",
+            "DEARMAN": "assets/dearman.jpg",
+            "GIVE": "assets/give.jpg",
+            "FAST": "assets/fast.jpg"
         }
 
         st.subheader(f"📖 Skill Manual: {skill}")
@@ -1109,32 +1140,34 @@ if app_mode == "🎯 Practice Skills":
 
             if skill == "Wise Mind":
                 st.markdown("""
-                **Definition:** A balance of the Reasonable Mind (logic) and the Emotional Mind (feelings).  
-                **Steps:** 
-                * Breathe in, focus on the word **'Wise'**.  
-                * Breathe out, focus on the word **'Mind'**.  
-                * Repeat this 10 times
-                * Now, ask your inner self: *What is the wise choice AKA middle path here?*
-                """)
+                 **Definition:** A balance of the Reasonable Mind (logic) and the Emotional Mind (feelings).  
+                 **Steps:** 
+                 * Breathe in, focus on the word **'Wise'**.  
+                 * Breathe out, focus on the word **'Mind'**.  
+                 * Repeat this 10 times
+                 * Now, ask your inner self: *What is the wise choice AKA middle path here?*
+                 """)
                 full_notes = st.text_area("Write down what your Wise Mind is telling you right now:")
-            elif skill in ["STOP", "STOP Skill"]:
+            elif skill == "STOP":
                 st.subheader("STOP Skill")
                 st.markdown("""
-                **S** - **Stop!** Do not react immediately.  
-                **T** - **Take a step back.** Take a deep breath.  
-                **O** - **Observe** your inside and outside environment.  
-                **P** - **Proceed mindfully.** What is the most effective next step?
-                """)
+                 **S** - **Stop!** Do not react immediately.  
+                 **T** - **Take a step back.** Take a deep breath.  
+                 **O** - **Observe** your inside and outside environment.  
+                 **P** - **Proceed mindfully.** What is the most effective next step?
+                 """)
                 full_notes = st.text_area("Write down what you are observing right now to practice 'O' (Observe):")
-            elif skill in ["TIPP", "TIPP Skill"]:
+                st.write("---")
+                st.write("Consider using **TIPP** or **Distract (ACCEPTS)** next as 'P'!")
+            elif skill == "TIPP":
                 st.subheader("TIPP Skill")
                 st.write("'Shock' your body to reduce extreme physical distress fast:")
                 st.markdown("""
-                * **T**emperature - change the temperature quickly e.g. icepack on forehead, cold shower
-                * **I**ntense Exercise - to boost endorphins and combat negative emotions
-                * **P**aced Breathing - breathe in for 4, out for 6
-                * **P**aired Muscle Relaxation - tense a muscle group as you breathe in, then release as you breathe out
-                """)
+                 * **T**emperature - change the temperature quickly e.g. icepack on forehead, cold shower
+                 * **I**ntense Exercise - to boost endorphins and combat negative emotions - could be a dance workout, running up the stairs etc.
+                 * **P**aced Breathing - breathe in for 4, out for 6
+                 * **P**aired Muscle Relaxation - tense a muscle group as you breathe in, then release as you breathe out, repeat.
+                 """)
                 selected_tipp = st.selectbox("Which TIPP action did you perform?",
                                              ["Cold Temperature", "Intense Exercise", "Paced Breathing",
                                               "Paired Muscle Relaxation"])
@@ -1142,6 +1175,7 @@ if app_mode == "🎯 Practice Skills":
                 full_notes = f"{selected_tipp}: {practice}"
             elif skill == "Pros & Cons":
                 st.subheader("Pros & Cons")
+                st.write("Identify the short-term and long-term results of acting on your urges vs. resisting them.")
                 col1, col2 = st.columns(2)
                 with col1:
                     pro_act = st.text_area("Pros of acting on the urge:")
@@ -1151,58 +1185,174 @@ if app_mode == "🎯 Practice Skills":
                     con_resist = st.text_area("Cons of resisting:")
                 full_notes = f"Pros/Cons Grid:\nPros of Acting: {pro_act}\nCons of Acting: {con_act}\nPros of Resisting: {pro_resist}\nCons of Resisting: {con_resist}"
             elif skill == "Distract":
-                st.markdown("Practice using ACCEPTS to temporarily redirect mental focus.")
+                st.markdown("""
+                 Practice using **ACCEPTS**:  
+                 * **A**ctivities - choose a meaningful activity that requires thought/concentration e.g. a craft 
+                 * **C**ontributing - focus your mind away from yourself, volunteer to help someone else e.g. writing a card for a friend
+                 * **C**omparisons  - remind yourself that other people and yourself have got through situations that are just as hard as this
+                 * **E**motions - switch up your emotions with an activity e.g. watching a comedy show if you feel sad
+                 * **P**ushing away - don't give those negative thoughts headspace - you can physically do this by writing it all out and scrunching up the paper
+                 * **T**houghts  - when emotions are very strong try to focus on thinking e.g. counting in 3s
+                 * **S**ensations - find safe physical sensations to distract e.g. sour or spicy foods, ice cubes etc.
+                 """)
                 full_notes = st.text_area("Which ACCEPTS distraction technique will you use?")
             elif skill in ["Self-Soothe", "Self-Soother"]:
-                st.markdown("Soothe your five physical senses.")
+                st.markdown("""
+                 Soothe your senses:  
+                 * **Vision** - e.g. find a satisfying photography video on your phone such as the night sky
+                 * **Hearing** - e.g. listen to music, podcasts, audiobooks or soundscapes
+                 * **Touch**  - e.g. a warm shower, textured fidgets or stroking pets
+                 * **Taste** - e.g. a comforting taste such as sweets or chewing gum, focusing on the taste
+                 * **Smell** - e.g. light a scented candle, smell the scent of your safe person/place e.g. perfume or laundry detergent
+                                 """)
                 full_notes = st.text_area("How will you soothe your senses right now?")
             elif skill == "Validation":
-                st.markdown("Acknowledge emotions as valid, understandable responses.")
+                st.markdown("""
+                 Acknowledge yours or others' emotions as valid, normal responses to situations.  
+                 **Key Validation Steps:** * Pay attention fully (no multi-tasking allowed!).  
+                 * Reflect back on what you/or the other person are saying/doing.  
+                 * Be sensitive to non-verbal cues.  
+                 * Express how your/their thoughts or feelings make sense in context.  
+                 * Acknowledge the valid reality.  
+                 * Show radical equality.
+                 """)
                 full_notes = st.text_area("Describe your validation practice here:")
             elif skill == "Radical Acceptance":
                 st.subheader("Radical Acceptance & Willingness")
+                st.write(
+                    "Observe and practice letting go of fighting reality. Tell yourself: *'This is the situation, and this is how I feel right now. I don't have to like it, but I cannot change this exact second - all events have led to now.'*")
                 fighting_reality = st.text_area(
                     "What questions or statements in your mind are fighting reality right now?")
-                willingness_notes = st.text_area("Write down a willingness statement for this moment:")
-                acceptance = st.text_area("Act as if you have truly accepted.")
+                willingness_notes = st.text_area(
+                    "Write down a willingness statement for this moment (e.g., 'I accept that I feel intensely right now, and I will let the emotions climax and pass'):")
+                acceptance = st.text_area("Act as if you have truly accepted, using half-smile, willing hands etc.")
+                st.info(
+                    "💡 You can survive these difficult feelings; life is worth living with the pain and peace will come.")
+                st.write("Recommended next steps to address active problem loops:")
+                col_lnk1, col_lnk2 = st.columns(2)
+                with col_lnk1:
+                    if st.button("📊 Open Pros & Cons Manual Page", use_container_width=True, key="manual_lnk_pc"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "Pros & Cons"
+                        st.rerun()
+                with col_lnk2:
+                    if st.button("🚀 Open Positive Experiences (Cope Ahead)", use_container_width=True,
+                                 key="manual_lnk_pe"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "Positive Experiences"
+                        st.rerun()
                 full_notes = f"Fighting Reality: {fighting_reality} | Willingness: {willingness_notes} | Acceptance: {acceptance}"
             elif skill == "IMPROVE":
-                st.markdown("Imagery, Meaning, Prayer, Relaxation, One thing, Vacation, Encouragement.")
-                full_notes = st.text_area("Write down your IMPROVE strategy:")
+                st.markdown("""
+                 **I**magery e.g. choose something visually soothing - watching favourite craft videos, playing satisfying games or pictures of a safe place
+                 **M**eaning e.g. remind yourself that you are learning and growing from this situation!
+                 **P**rayer e.g. have faith in your own strength or wisdom, talk to the universe, meditate
+                 **R**elaxation e.g. hot bath/shower, yoga, warm drink - whatever works for you!
+                 **O**ne thing e.g. focus on what is in front of you, get stuck into a task, observing every small step
+                 **V**acation e.g. go out into nature, turn off your phone, take a nap
+                 **E**ncouragement e.g. remind yourself that you are doing better than you think - little you is so proud!
+                 """)
             elif skill == "Describing the Emotion":
-                what_happened = st.text_input("Describe triggering events:")
-                body_sensation = st.text_input("Physical body sensation:")
-                craved_action = st.text_input("Urge:")
-                actual_action = st.text_input("Actual action taken:")
-                emotion_name = st.text_input("Primary emotion:")
-                sec_emotion_name = st.text_input("Secondary emotions:")
-                intensity = st.text_input("Emotion intensity rating:")
+                st.subheader("Describing the Emotion")
+                st.write("To manage an emotion, we must first put a name and physical facts to it.")
+                what_happened = st.text_input(
+                    "Describe the events leading up to this moment - what happened and when? What is your interpretation/belief about the situation?")
+                body_sensation = st.text_input("Where do you feel this in your body physically?")
+                craved_action = st.text_input("What did you want to do as a result of how you felt?")
+                actual_action = st.text_input("What did you do and say (actions and behaviours engaged in)")
+                emotion_name = st.text_input("Name the primary emotion (e.g., Anger, Sadness, Shame):")
+                sec_emotion_name = st.text_input("Name any secondary emotions below")
+                intensity = st.text_input("Rate the intensity of the emotion")
                 full_notes = f"What Happened: {what_happened} | Primary: {emotion_name} | Secondary: {sec_emotion_name} | Sensation: {body_sensation} | Urge: {craved_action} | Action: {actual_action} | Intensity: {intensity}"
             elif skill == "Check the Facts":
-                full_notes = st.text_area("List thoughts vs. objective facts:")
+                st.write(
+                    "Compare your emotional reactions to the physical reality of the situation. When you are feeling overwhelmed, list small tasks and start with the first one.")
+                full_notes = st.text_area(
+                    "Where do you physically hold your current emotional response?\nWhat are your thoughts/beliefs?\nWhat are the facts?\nWhat is the worst outcome\nRecheck the facts")
             elif skill == "Opposite Action":
-                full_notes = st.text_area("Action urge vs. opposite action taken:")
+                st.write("Act opposite to your current emotional urge if your emotion doesn't match the facts.")
+                full_notes = st.text_area(
+                    "What is your action urge and is it effective? Write the opposite action you will take (actions & words).")
             elif skill == "Problem-solving":
-                full_notes = st.text_area("Problem, short-term goals, top 3 solutions, and action steps:")
+                st.write("When emotions are appropriate, break the issue down into actionable, concrete tasks.")
+                full_notes = st.text_area(
+                    "What is the problem (check the facts here)?\nWhat is the short-term goal?\nList top 3 solutions\nPros & Cons to choose\nBreakdown into steps")
             elif skill == "Positive Experiences":
-                full_notes = st.text_area("Describe positive practice or plan:")
+                st.markdown("""
+                 * Build short-term positive experiences (doing something pleasant daily).  
+                 * Work toward long-term positive experiences (taking steps that align directly with your life values).
+                 """)
+                full_notes = st.text_area(
+                    "What is a future scenario you want to use Cope Ahead for? Describe your plan:")
             elif skill == "Building Mastery":
-                full_notes = st.text_area("Describe task executed to build competence:")
+                st.markdown("""
+                 **Steps:** * Do things that make you feel competent, effective, and in control.  
+                 * Plan at least one difficult but fully achievable task daily.
+                 """)
+                full_notes = st.text_area("What is a task you can do today that makes you feel competent?")
             elif skill == "Cope Ahead":
-                describe_ca = st.text_area("Facts of future situation:")
-                decide_ca = st.text_area("How will you cope?")
-                rehearse_ca = st.text_area("Mental rehearsal notes:")
-                full_notes = f"Describe: {describe_ca} | Decide: {decide_ca} | Rehearse: {rehearse_ca}"
+                st.markdown("""
+                 **Cope Ahead:** Anticipate high-stress future scenarios, plan effective skills ahead of time, and visualize yourself applying them successfully.
+                 """)
+                describe_ca = st.text_area(
+                    " What are the facts of the situation? What emotions and action urges may interfere with my skills?")
+                decide_ca = st.text_area("How will I cope with this situation?")
+                rehearse_ca = st.text_area(
+                    "Write what you will think and say, what skills you will use to cope and how you will act")
+                st.write(
+                    "Imagine yourself in the situation and rehearse coping with new problems arising and your 'most feared' scenario?")
+                selected_de = st.selectbox(
+                    "Choose a post-practice relaxation, save your work and then select the button to take you there",
+                    ["Self-Soothe", "Distract (ACCEPTS)"]
+                )
+                full_notes = f"Describe: {describe_ca} | Decide: {decide_ca} | Ideal: {rehearse_ca} | Relax: {selected_de}"
+                col_lnk1, col_lnk2 = st.columns(2)
+                with col_lnk1:
+                    if st.button("Self-Soothe", use_container_width=True, key="manual_lnk_pc"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "Self-Soothe"
+                        st.rerun()
+                with col_lnk2:
+                    if st.button("Distract (ACCEPTS)", use_container_width=True, key="manual_lnk_pe"):
+                        st.session_state.page = "Skill_Detail"
+                        st.session_state.selected_skill = "Distract"
+                        st.rerun()
             elif skill == "PLEASE":
-                st.markdown("Physical health, Eating, Avoiding mind-altering substances, Sleep, Exercise.")
-                full_notes = st.text_area("Notes on physical vulnerabilities:")
+                st.markdown("""
+                 **P & L** = Looking after yourself **physically** e.g. taking meds, attending GP appointments
+                 **E** = **Eating** well - aiming for a wide variety of foods, prioritising nutrient dense foods
+                 **A** = **Avoiding** addictive habits e.g. social media, alcohol, drugs etc.
+                 **S** = **Sleep** routine in place to get good quality of sleep
+                 **E** = **Exercise** in a way that suits you (and your health!) """)
             elif skill == "DEARMAN":
+                st.markdown("""
+                 **D** - **Describe** the situation with facts ONLY.  
+                 **E** - **Express** your feelings and opinions using 'I' statements.  
+                 **A** - **Assert** - ask for what you want or say 'No' clearly.  
+                 **R** - **Reinforce** the benefits of getting what you want (win-win).  
+                 **M** - Stay **Mindful** (broken record, ignore side-attacks).  
+                 **A** - **Appear confident** (use strong posture and eye contact).  
+                 **N** - **Negotiate** (be willing to compromise or ask for their ideas).
+                 """)
                 full_notes = st.text_area("Draft your assertive DEARMAN script here:")
             elif skill == "GIVE":
-                full_notes = st.text_area("How can you communicate using GIVE principles?")
+                st.markdown("""
+                 **G** - Be **Gentle** (no attacks, threats, judging, or sneering).  
+                 **I** - Act **Interested** (actively listen, do not interrupt).  
+                 **V** - **Validate** (acknowledge their perspective and context).  
+                 **E** - Use an **Easy manner** (smile, keep it light-hearted).  
+                 *Goal: Keeps relationships healthy and intact.*
+                 """)
+                full_notes = st.text_area("How can you communicate this using GIVE principles?")
             elif skill == "FAST":
+                st.markdown("""
+                 **F** - Be **Fair** (validate your own feelings and wishes as well as the other person's).  
+                 **A** - No **Apologies** (don't apologize for existing, having an opinion, or making a request).  
+                 **S** - **Stick to values** (be clear on what you believe and don't compromise integrity).  
+                 **T** - Be **Truthful** (don't lie, exaggerate, or make excuses).  
+                 *Goal: Keeps your self-respect completely intact.*
+                 """)
                 full_notes = st.text_area("Draft a FAST script maintaining your self-respect:")
-
             st.write("---")
             st.subheader("How are you feeling after practicing?")
             detail_rating_after = st.slider(
