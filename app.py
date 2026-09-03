@@ -1045,7 +1045,7 @@ if app_mode == "🎯 Practice Skills":
 
         st.subheader(f"📖 Skill Manual: {skill}")
         if skill in SKILL_IMAGES:
-            st.image(SKILL_IMAGES[skill], use_container_width=True)
+            st.image(SKILL_IMAGES[skill], use_column_width=True)
             st.write("---")
         full_notes = ""
 
