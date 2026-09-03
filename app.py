@@ -10,66 +10,38 @@ import platform
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
 
-# ==========================================
-# 1. BULLETPROOF MOBILE SCROLL ENGINE
-# ==========================================
-# Insert a zero-height anchor at the very top of Streamlit's markdown body
-st.markdown('<div id="top" style="position: absolute; top: 0; left: 0; height: 0; width: 0;"></div>', unsafe_allow_html=True)
+def scroll_to_top_on_page_change():
+    current_subpage = st.session_state.get("page", "Home")
+    current_mode = st.session_state.get("sidebar_navigation_menu", "🎯 Practice Skills")
+    page_sig = f"{current_mode}_{current_subpage}"
 
-st.html(
-    """
-    <script>
-    (function() {
-        // 1. Kill browser-level position restoration
-        if ('scrollRestoration' in history) {
-            history.scrollRestoration = 'manual';
-        }
+    if st.session_state.get("last_scrolled_page") != page_sig:
+        st.session_state.last_scrolled_page = page_sig
 
-        function forceScrollTop() {
-            // Remove focus from any button clicked so mobile Chrome doesn't stay anchored to it
-            if (document.activeElement && document.activeElement.tagName === 'BUTTON') {
-                document.activeElement.blur();
-            }
-
-            // A: Native Browser Location Hash (Forces Chrome to jump via hardware render)
-            if (window.location.hash !== '#top') {
-                window.location.hash = 'top';
-            } else {
-                window.location.hash = '';
-                window.location.hash = 'top';
-            }
-
-            // B: Exhaustive search for all Streamlit internal scrollable viewports
-            const selectors = [
-                '[data-testid="stAppViewContainer"]',
-                '[data-testid="stMain"]',
-                '[data-testid="stAppViewBlockContainer"]',
-                'section.main',
-                '.main'
-            ];
-
-            selectors.forEach(sel => {
-                document.querySelectorAll(sel).forEach(el => {
-                    if (el) {
-                        el.scrollTop = 0;
-                        if (el.scrollTo) el.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+        st.html(
+            """
+            <script>
+            (function() {
+                function dispatchScroll() {
+                    window.postMessage("SCROLL_TOP", "*");
+                    if (window.parent) {
+                        window.parent.postMessage("SCROLL_TOP", "*");
                     }
-                });
-            });
+                }
 
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            document.documentElement.scrollTop = 0;
-        }
-
-        // Run immediately and repeat through standard mobile repaint cycles
-        forceScrollTop();
-        [30, 100, 250, 600, 1000].forEach(ms => setTimeout(forceScrollTop, ms));
-    })();
-    </script>
-    """
-)
-
+                dispatchScroll();
+                let start = performance.now();
+                function loop(now) {
+                    dispatchScroll();
+                    if (now - start < 600) {
+                        requestAnimationFrame(loop);
+                    }
+                }
+                requestAnimationFrame(loop);
+            })();
+            </script>
+            """
+        )
 # Helper function to force browser memory sync if running in Stlite/Pyodide
 def sync_browser_storage():
     try:
