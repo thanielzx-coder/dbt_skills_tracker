@@ -13,8 +13,8 @@ def responsive_image(image, **kwargs):
     params = inspect.signature(st.image).parameters
     if "use_container_width" in params:
         return st.image(image, use_container_width=True, **kwargs)
-    elif "use_column_width" in params:
-        return st.image(image, use_column_width=True, **kwargs)
+    elif "use_container_width" in params:
+        return st.image(image, use_container_width=True, **kwargs)
     else:
         return st.image(image, **kwargs)
 
