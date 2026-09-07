@@ -447,7 +447,7 @@ if app_mode == "🎯 Practice Skills":
                     st.session_state.flow_step = 1
                     st.rerun()
             with col_strat_m:
-                if st.button("✨ Mental / Imagery Reset", key="quiz_m_reset", use_column_width=True):
+                if st.button("✨ Mental / Imagery Reset", key="quiz_m_reset", use_container_width=True):
                     st.info("✨ **Recommendation:** Try the IMPROVE framework to step away mentally.")
                     st.session_state.page = "Skill_Detail"
                     st.session_state.selected_skill = "IMPROVE"
@@ -1045,7 +1045,7 @@ if app_mode == "🎯 Practice Skills":
 
         st.subheader(f"📖 Skill Manual: {skill}")
         if skill in SKILL_IMAGES:
-            st.image(SKILL_IMAGES[skill], use_column_width=True)
+            st.image(SKILL_IMAGES[skill], use_container_width=True)
             st.write("---")
         full_notes = ""
 
