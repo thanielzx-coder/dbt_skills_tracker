@@ -6,6 +6,17 @@ import random
 from streamlit_calendar import calendar
 import time
 import platform
+import inspect
+
+def responsive_image(image, **kwargs):
+    """Safely renders st.image with container width across all Streamlit versions."""
+    params = inspect.signature(st.image).parameters
+    if "use_container_width" in params:
+        return st.image(image, use_container_width=True, **kwargs)
+    elif "use_column_width" in params:
+        return st.image(image, use_column_width=True, **kwargs)
+    else:
+        return st.image(image, **kwargs)
 
 # --- Page Config ---
 st.set_page_config(page_title="DBT Companion", page_icon="🧘", layout="centered")
@@ -1045,7 +1056,7 @@ if app_mode == "🎯 Practice Skills":
 
         st.subheader(f"📖 Skill Manual: {skill}")
         if skill in SKILL_IMAGES:
-            st.image(SKILL_IMAGES[skill], use_container_width=True)
+            responsive_image(SKILL_IMAGES[skill])
             st.write("---")
         full_notes = ""
 
